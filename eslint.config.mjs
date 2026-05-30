@@ -2,5 +2,9 @@
 import coreWebVitals from "eslint-config-next/core-web-vitals"
 import typescript from "eslint-config-next/typescript"
 
-const config = [...coreWebVitals, ...typescript]
+const config = [
+  { ignores: [".open-next/**", ".next/**", "cloudflare-env.d.ts"] },
+  ...coreWebVitals,
+  ...typescript,
+]
 export default config

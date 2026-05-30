@@ -15,3 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     headers: { ...corsHeaders(origin, allowedOrigins()), "Cache-Control": PUBLIC_CACHE },
   })
 }
+
+export function OPTIONS(req: Request) {
+  return new Response(null, { headers: corsHeaders(req.headers.get("Origin"), allowedOrigins()) })
+}

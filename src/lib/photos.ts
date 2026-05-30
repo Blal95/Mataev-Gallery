@@ -90,10 +90,6 @@ export async function listTagCounts(db: SqlDb): Promise<{ name: string; count: n
   return results
 }
 
-export async function updateCaption(db: SqlDb, id: string, caption: string): Promise<void> {
-  await db.prepare("UPDATE photos SET caption = ? WHERE id = ?").bind(caption, id).run()
-}
-
 export async function deletePhoto(db: SqlDb, id: string): Promise<string[]> {
   const row = await db.prepare("SELECT r2_original, r2_large, r2_thumb FROM photos WHERE id = ?").bind(id).first<{
     r2_original: string; r2_large: string; r2_thumb: string

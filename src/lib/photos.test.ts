@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { makeTestDb } from "../../test/sqlite-adapter"
-import { insertPhoto, listPhotos, getPhoto, listTagCounts, deletePhoto, updateCaption, updatePhoto, setTags } from "./photos"
+import { insertPhoto, listPhotos, getPhoto, listTagCounts, deletePhoto, updatePhoto, setTags } from "./photos"
 import { h } from "./photos.test-helpers"
 
 describe("photos data layer", () => {
@@ -27,12 +27,6 @@ describe("photos data layer", () => {
     await insertPhoto(db, h("p1"), ["a", "b"])
     const got = await getPhoto(db, "p1")
     expect(got?.tags.sort()).toEqual(["a", "b"])
-  })
-  it("updates caption", async () => {
-    const db = makeTestDb()
-    await insertPhoto(db, h("p1"), [])
-    await updateCaption(db, "p1", "new")
-    expect((await getPhoto(db, "p1"))?.row.caption).toBe("new")
   })
   it("deletes and returns r2 keys", async () => {
     const db = makeTestDb()
