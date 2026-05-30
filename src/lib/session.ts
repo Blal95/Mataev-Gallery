@@ -25,11 +25,11 @@ export async function signSession(payload: SessionPayload, secret: string): Prom
 export async function verifySession(token: string, secret: string): Promise<SessionPayload | null> {
   const [body, sig] = token.split(".")
   if (!body || !sig) return null
-  const ok = await crypto.subtle.verify("HMAC", await key(secret), fromB64url(sig), new TextEncoder().encode(body))
-  if (!ok) return null
   try {
+    const ok = await crypto.subtle.verify("HMAC", await key(secret), fromB64url(sig), new TextEncoder().encode(body))
+    if (!ok) return null
     const payload = JSON.parse(new TextDecoder().decode(fromB64url(body))) as SessionPayload
-    if (payload.exp < Date.now()) return null
+    if (typeof payload.exp !== "number" || payload.exp < Date.now()) return null
     return payload
   } catch {
     return null
