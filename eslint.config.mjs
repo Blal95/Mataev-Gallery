@@ -1,5 +1,6 @@
-// eslint-config-next 16 exports a native flat config array — import directly.
-import nextConfig from "eslint-config-next"
+// eslint-config-next 16 ships native flat-config subpath exports.
+import coreWebVitals from "eslint-config-next/core-web-vitals"
+import typescript from "eslint-config-next/typescript"
 
-const config = [...nextConfig]
+const config = [...coreWebVitals, ...typescript]
 export default config
