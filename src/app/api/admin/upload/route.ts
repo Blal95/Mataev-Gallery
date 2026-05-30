@@ -33,7 +33,9 @@ export async function POST(req: Request) {
   if (original.size > 30 * 1024 * 1024) return Response.json({ error: "file too large" }, { status: 413 })
 
   const id = newId()
-  const keys = photoKeys(id, meta.ext)
+  const ALLOWED_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif"]
+  const ext = ALLOWED_EXT.includes((meta.ext || "").toLowerCase()) ? meta.ext.toLowerCase() : "jpg"
+  const keys = photoKeys(id, ext)
   await Promise.all([
     putPhotoObject(keys.original, await original.arrayBuffer(), original.type || "image/jpeg"),
     putPhotoObject(keys.large, await large.arrayBuffer(), "image/webp"),

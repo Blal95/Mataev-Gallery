@@ -107,7 +107,8 @@ export async function updatePhoto(
   db: SqlDb, id: string,
   patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published">>,
 ): Promise<void> {
-  const fields = Object.keys(patch)
+  const ALLOWED = new Set(["caption", "place", "country", "country_code", "published"])
+  const fields = Object.keys(patch).filter((f) => ALLOWED.has(f))
   if (fields.length) {
     const set = fields.map((f) => `${f} = ?`).join(", ")
     await db.prepare(`UPDATE photos SET ${set} WHERE id = ?`).bind(...fields.map((f) => (patch as Record<string, unknown>)[f]), id).run()
