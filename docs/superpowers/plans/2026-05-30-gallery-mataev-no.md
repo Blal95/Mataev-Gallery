@@ -512,7 +512,7 @@ describe("tags", () => {
   })
   it("drops invalid chars", () => expect(normalizeTag("a*b!c")).toBe("abc"))
   it("parses a #-separated string into unique normalized tags", () => {
-    expect(parseTags("#norway #Lofoten #norway blue hour")).toEqual(["norway", "lofoten", "blue-hour"])
+    expect(parseTags("#norway #Lofoten #norway #blue hour")).toEqual(["norway", "lofoten", "blue-hour"])
   })
   it("returns [] for empty", () => expect(parseTags("   ")).toEqual([]))
 })
