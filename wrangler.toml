@@ -1,0 +1,23 @@
+name = "mataev-gallery"
+main = ".open-next/worker.js"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "gallery-photos"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gallery"
+database_id = "PLACEHOLDER_RUN_wrangler_d1_create_gallery"
+
+[vars]
+NEXT_PUBLIC_CDN_BASE = "https://cdn.gallery.mataev.no"
+RP_ID = "gallery.mataev.no"
+RP_ORIGIN = "https://gallery.mataev.no"
+ALLOWED_ORIGINS = "https://mataev.no,https://www.mataev.no,http://localhost:3000"

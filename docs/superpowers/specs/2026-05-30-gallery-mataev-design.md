@@ -10,7 +10,7 @@
 
 A photo gallery web app on `gallery.mataev.no` that plays two roles:
 
-1. **Public gallery** — a minimalist, original, "Mosaic Noir" site where people browse Bilal's photography.
+1. **Pux'blic gallery** — a minimalist, original, "Mosaic Noir" site where people browse Bilal's photography.
 2. **Headless API** — `GET /api/photos` returns JSON consumed by the existing 3D portfolio (`mataev.no`, its `/api/gallery` route) and any other client.
 
 It includes a passkey-protected **admin** for posting, editing, and deleting photos. On upload, EXIF + location are extracted automatically; new photos appear in the public grid and the API immediately.
