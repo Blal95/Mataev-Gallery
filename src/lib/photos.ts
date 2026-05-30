@@ -102,3 +102,23 @@ export async function deletePhoto(db: SqlDb, id: string): Promise<string[]> {
   await db.prepare("DELETE FROM photos WHERE id = ?").bind(id).run()
   return [row.r2_original, row.r2_large, row.r2_thumb]
 }
+
+export async function updatePhoto(
+  db: SqlDb, id: string,
+  patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published">>,
+): Promise<void> {
+  const fields = Object.keys(patch)
+  if (fields.length) {
+    const set = fields.map((f) => `${f} = ?`).join(", ")
+    await db.prepare(`UPDATE photos SET ${set} WHERE id = ?`).bind(...fields.map((f) => (patch as Record<string, unknown>)[f]), id).run()
+  }
+}
+
+export async function setTags(db: SqlDb, id: string, tags: string[]): Promise<void> {
+  await db.prepare("DELETE FROM photo_tags WHERE photo_id = ?").bind(id).run()
+  for (const name of tags) {
+    await db.prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)").bind(name).run()
+    const tag = await db.prepare("SELECT id FROM tags WHERE name = ?").bind(name).first<{ id: number }>()
+    if (tag) await db.prepare("INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)").bind(id, tag.id).run()
+  }
+}
