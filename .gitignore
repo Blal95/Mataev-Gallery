@@ -17,3 +17,6 @@
 *.log
 /coverage
 *.tsbuildinfo
+
+# next generated
+next-env.d.ts
