@@ -7,8 +7,8 @@ import { flagEmoji } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
 
 export function PhotoTile({
-  photo, width, height, index,
-}: { photo: PhotoDTO; width: number; height: number; index: number }) {
+  photo, width, height, index, priority,
+}: { photo: PhotoDTO; width: number; height: number; index: number; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false)
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const place = [flagEmoji(photo.countryCode), photo.place].filter(Boolean).join(" ")
@@ -27,10 +27,14 @@ export function PhotoTile({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photo.url.thumb}
+        srcSet={`${photo.url.thumb} 500w, ${photo.url.large} 1600w`}
+        sizes={`${Math.round(width)}px`}
         alt={photo.caption ?? `Photo ${index + 1}`}
         width={photo.width}
         height={photo.height}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "low"}
+        decoding="async"
         onLoad={() => setLoaded(true)}
         className="relative h-full w-full object-cover"
       />

@@ -30,7 +30,7 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
           <div key={ri} className="flex" style={{ gap: GAP }}>
             {row.boxes.map((b) => {
               const entry = byId.get(b.id)!
-              return <PhotoTile key={b.id} photo={entry.p} width={b.width} height={b.height} index={entry.i} />
+              return <PhotoTile key={b.id} photo={entry.p} width={b.width} height={b.height} index={entry.i} priority={ri === 0} />
             })}
           </div>
         ))}
