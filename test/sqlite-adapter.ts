@@ -2,15 +2,8 @@ import Database from "better-sqlite3"
 import { readFileSync } from "fs"
 import { resolve } from "path"
 
-export interface SqlStatement {
-  bind(...values: unknown[]): SqlStatement
-  all<T = unknown>(): Promise<{ results: T[] }>
-  first<T = unknown>(): Promise<T | null>
-  run(): Promise<{ success: true }>
-}
-export interface SqlDb {
-  prepare(sql: string): SqlStatement
-}
+export type { SqlStatement, SqlDb } from "@/lib/sqldb"
+import type { SqlStatement, SqlDb } from "@/lib/sqldb"
 
 class BetterStmt implements SqlStatement {
   constructor(private db: Database.Database, private sql: string, private params: unknown[] = []) {}
