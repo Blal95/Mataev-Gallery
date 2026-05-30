@@ -17,3 +17,22 @@
 html, body { background: var(--color-bg); color: var(--color-text); }
 body { -webkit-font-smoothing: antialiased; }
 * { box-sizing: border-box; }
+
+/* Focus ring: keyboard navigation only */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Reduced-motion: collapse all durations and disable tile lift */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+  .hover\:-translate-y-1:hover {
+    transform: none !important;
+  }
+}

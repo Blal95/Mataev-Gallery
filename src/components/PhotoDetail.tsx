@@ -37,9 +37,9 @@ export function PhotoDetail({
       <div className="flex items-center justify-between px-4 py-3">
         <span className="font-mono text-[11px] uppercase tracking-[0.3em] text-muted">{site.name} <span className="text-cyan">·</span></span>
         {asModal ? (
-          <button onClick={() => router.back()} className="font-mono text-[13px] text-muted-2 hover:text-text">✕</button>
+          <button onClick={() => router.back()} aria-label="Close" className="font-mono text-[13px] text-muted-2 hover:text-text">✕</button>
         ) : (
-          <Link href="/" className="font-mono text-[13px] text-muted-2 hover:text-text">✕</Link>
+          <Link href="/" aria-label="Close" className="font-mono text-[13px] text-muted-2 hover:text-text">✕</Link>
         )}
       </div>
 
