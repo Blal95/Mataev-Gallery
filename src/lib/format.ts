@@ -1,6 +1,6 @@
 export function formatExposure(seconds: number | null): string | null {
   if (seconds == null || seconds <= 0) return null
-  if (seconds >= 1) return Number.isInteger(seconds) ? `${seconds}s` : `${seconds}s`
+  if (seconds >= 1) return `${seconds}s`
   if (seconds >= 0.25) return `${seconds}s`
   return `1/${Math.round(1 / seconds)}`
 }

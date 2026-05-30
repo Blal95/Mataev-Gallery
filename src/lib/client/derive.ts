@@ -16,5 +16,7 @@ function scaleTo(bmp: ImageBitmap, maxEdge: number, quality: number): Promise<Bl
 export async function deriveImages(file: File): Promise<Derived> {
   const bmp = await loadBitmap(file)
   const [large, thumb] = await Promise.all([scaleTo(bmp, 1600, 0.82), scaleTo(bmp, 500, 0.72)])
-  return { large, thumb, width: bmp.width, height: bmp.height }
+  const { width, height } = bmp
+  bmp.close()
+  return { large, thumb, width, height }
 }

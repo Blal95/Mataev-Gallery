@@ -9,7 +9,7 @@ interface StatusResponse { authed: boolean; enrolled: boolean }
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null)
-  const [enrolled, setEnrolled] = useState(true)
+  const [enrolled, setEnrolled] = useState(false)
   const [reload, setReload] = useState(0)
 
   useEffect(() => {

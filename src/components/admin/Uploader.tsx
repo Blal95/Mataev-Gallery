@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toJpegIfHeic } from "@/lib/client/heic"
 import { extractExif } from "@/lib/client/exif"
 import { deriveImages } from "@/lib/client/derive"
@@ -13,6 +13,8 @@ interface Pending {
 
 export function Uploader({ onUploaded }: { onUploaded: () => void }) {
   const [items, setItems] = useState<Pending[]>([])
+
+  useEffect(() => () => { items.forEach((it) => URL.revokeObjectURL(it.preview)) }, [])
 
   async function onFiles(files: FileList | null) {
     if (!files) return

@@ -27,7 +27,7 @@ export function PhotoTile({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photo.url.thumb}
-        alt={photo.caption ?? ""}
+        alt={photo.caption ?? `Photo ${index + 1}`}
         width={photo.width}
         height={photo.height}
         loading="lazy"

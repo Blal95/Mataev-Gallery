@@ -9,6 +9,7 @@ export async function computeThumbhash(file: File): Promise<string> {
   const ctx = canvas.getContext("2d")!
   ctx.drawImage(bmp, 0, 0, w, h)
   const { data } = ctx.getImageData(0, 0, w, h)
+  bmp.close()
   const hash = rgbaToThumbHash(w, h, data)
   let s = ""
   for (const b of hash) s += String.fromCharCode(b)
