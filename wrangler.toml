@@ -14,11 +14,11 @@ bucket_name = "gallery-photos"
 [[d1_databases]]
 binding = "DB"
 database_name = "gallery"
-database_id = "PLACEHOLDER_RUN_wrangler_d1_create_gallery"
+database_id = "fb34ab35-93ff-4694-a1f1-72dc42ea49d4"
 
 [vars]
 NEXT_PUBLIC_CDN_BASE = "https://cdn.gallery.mataev.no"
 RP_ID = "gallery.mataev.no"
 RP_ORIGIN = "https://gallery.mataev.no"
 ALLOWED_ORIGINS = "https://mataev.no,https://www.mataev.no,http://localhost:3000"
-NEXT_PUBLIC_MAPTILER_KEY = ""
+NEXT_PUBLIC_MAPTILER_KEY = "2H826UiaU4xRWDTBlRJ1"
