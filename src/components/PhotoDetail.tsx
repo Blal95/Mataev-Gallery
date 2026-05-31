@@ -6,6 +6,7 @@ import { useEffect } from "react"
 import { ExposureStrip } from "./ExposureStrip"
 import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
+import { ShortcutsOverlay } from "./ShortcutsOverlay"
 import { site } from "@/config/site"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -65,12 +66,22 @@ export function PhotoDetail({
                 ))}
               </div>
             )}
+            <a
+              href={photo.url.original}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="mt-3 inline-block font-mono text-[10px] uppercase tracking-[0.15em] text-muted hover:text-cyan transition-colors"
+            >
+              Full size ↗
+            </a>
           </div>
           <MapChip photo={photo} mapKey={mapKey} />
         </div>
       </div>
 
       <Filmstrip photos={neighbours} activeId={photo.id} />
+      <ShortcutsOverlay />
     </div>
   )
 }
