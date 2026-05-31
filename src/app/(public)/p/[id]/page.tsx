@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { db } from "@/lib/db"
-import { cdnBase, cf } from "@/lib/env"
+import { cdnBase } from "@/lib/env"
 import { getDetail } from "@/lib/detail"
 import { PhotoDetail } from "@/components/PhotoDetail"
 
@@ -48,6 +48,5 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const data = await getDetail(db(), cdnBase(), id)
   if (!data) notFound()
-  const mapKey = cf().NEXT_PUBLIC_MAPTILER_KEY ?? ""
-  return <PhotoDetail {...data} mapKey={mapKey} asModal={false} />
+  return <PhotoDetail {...data} asModal={false} />
 }

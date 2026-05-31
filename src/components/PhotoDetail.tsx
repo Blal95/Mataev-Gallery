@@ -11,9 +11,9 @@ import { site } from "@/config/site"
 import type { PhotoDTO } from "@/types/photo"
 
 export function PhotoDetail({
-  photo, neighbours, index, total, mapKey, asModal,
+  photo, neighbours, index, total, asModal,
 }: {
-  photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; mapKey: string; asModal: boolean
+  photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; asModal: boolean
 }) {
   const router = useRouter()
   const prev = neighbours[index - 1]
@@ -76,7 +76,7 @@ export function PhotoDetail({
               Full size ↗
             </a>
           </div>
-          <MapChip photo={photo} mapKey={mapKey} />
+          <MapChip photo={photo} />
         </div>
       </div>
 
