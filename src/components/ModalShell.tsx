@@ -58,7 +58,7 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
         aria-modal="true"
         aria-label="Photo detail"
         tabIndex={-1}
-        className="mx-auto my-6 max-w-[760px] overflow-hidden rounded-lg border border-line-2 bg-[#06080d] outline-none"
+        className="mx-auto my-[2vh] max-w-[760px] overflow-hidden rounded-lg border border-line-2 bg-[#06080d] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {children}

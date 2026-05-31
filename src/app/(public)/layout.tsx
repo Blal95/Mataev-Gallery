@@ -5,11 +5,11 @@ export default function PublicLayout({
   children, modal,
 }: { children: React.ReactNode; modal: React.ReactNode }) {
   return (
-    <>
+    <div className="flex min-h-dvh flex-col">
       <Wordmark />
-      {children}
-      {modal}
+      <div className="flex-1">{children}</div>
       <Footer />
-    </>
+      {modal}
+    </div>
   )
 }

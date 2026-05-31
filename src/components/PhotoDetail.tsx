@@ -47,7 +47,7 @@ export function PhotoDetail({
       <div className="mx-auto max-w-[640px] px-4 pb-4">
         <div className="rounded-[4px] border border-line-2 bg-bg-2 p-[7px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo.url.large} alt={photo.caption ?? ""} width={photo.width} height={photo.height} className="block w-full rounded-[2px]" />
+          <img src={photo.url.large} alt={photo.caption ?? ""} width={photo.width} height={photo.height} className="mx-auto block max-h-[58vh] w-auto max-w-full rounded-[2px] object-contain" />
         </div>
         <div className="mt-1.5 flex justify-between px-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-muted">
           <span>{String(index + 1).padStart(2, "0")} — {total}</span>
