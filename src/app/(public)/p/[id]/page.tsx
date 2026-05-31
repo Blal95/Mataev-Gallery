@@ -48,5 +48,9 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const data = await getDetail(db(), cdnBase(), id)
   if (!data) notFound()
-  return <PhotoDetail {...data} asModal={false} />
+  return (
+    <div className="fixed inset-0 z-50">
+      <PhotoDetail {...data} asModal={false} />
+    </div>
+  )
 }

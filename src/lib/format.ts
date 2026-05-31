@@ -12,7 +12,9 @@ export function formatBytes(bytes: number): string {
 }
 
 export function formatAperture(f: number | null): string | null {
-  return f == null ? null : `ƒ${f}`
+  if (f == null) return null
+  // EXIF apertures are often noisy floats (e.g. 1.7799999); show ≤1 decimal.
+  return `ƒ${parseFloat(f.toFixed(1))}`
 }
 
 export function formatFocal(mm: number | null): string | null {

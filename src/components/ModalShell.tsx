@@ -1,10 +1,13 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useEffect, useRef } from "react"
 
+/**
+ * Full-bleed focus-trap container for the intercepted photo route. The visual
+ * surface (background, layout) is painted by PhotoDetail itself so the modal
+ * and the standalone page share one immersive presentation.
+ */
 export function ModalShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
   const cardRef = useRef<HTMLDivElement>(null)
   const returnFocusRef = useRef<Element | null>(null)
 
@@ -23,8 +26,8 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
     const getFocusable = () =>
       Array.from(
         card.querySelectorAll<HTMLElement>(
-          'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        )
+          'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
       ).filter((el) => !el.hasAttribute("disabled"))
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,11 +41,9 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
           e.preventDefault()
           last.focus()
         }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
+      } else if (document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
       }
     }
 
@@ -51,18 +52,15 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm" onClick={() => router.back()}>
-      <div
-        ref={cardRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Photo detail"
-        tabIndex={-1}
-        className="mx-auto my-[2vh] max-w-[760px] overflow-hidden rounded-lg border border-line-2 bg-[#06080d] outline-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
+    <div
+      ref={cardRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo detail"
+      tabIndex={-1}
+      className="fixed inset-0 z-50 outline-none"
+    >
+      {children}
     </div>
   )
 }

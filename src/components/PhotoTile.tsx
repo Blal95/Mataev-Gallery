@@ -6,21 +6,24 @@ import { thumbhashToUrl } from "@/lib/thumbhash"
 import { flagEmoji } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
 
+function Tick({ pos }: { pos: string }) {
+  return <span aria-hidden className={`pointer-events-none absolute h-2 w-2 border-amber/0 transition-colors duration-300 group-hover:border-amber/70 ${pos}`} />
+}
+
 export function PhotoTile({
-  photo, width, height, index, priority,
-}: { photo: PhotoDTO; width: number; height: number; index: number; priority?: boolean }) {
+  photo, width, index, priority,
+}: { photo: PhotoDTO; width: number; height?: number; index: number; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false)
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const place = [flagEmoji(photo.countryCode), photo.place].filter(Boolean).join(" ")
+  const colW = Math.round(width)
+  const frame = String(index + 1).padStart(3, "0")
 
-  // Compute accurate width descriptors based on longest-edge scaling
   const srcSet = useMemo(() => {
     const longEdge = Math.max(photo.width, photo.height) || 1
     const thumbW = Math.max(1, Math.round(photo.width * Math.min(1, 500 / longEdge)))
     const largeW = Math.max(1, Math.round(photo.width * Math.min(1, 1600 / longEdge)))
-    if (thumbW === largeW) {
-      return `${photo.url.thumb} ${thumbW}w`
-    }
+    if (thumbW === largeW) return `${photo.url.thumb} ${thumbW}w`
     return `${photo.url.thumb} ${thumbW}w, ${photo.url.large} ${largeW}w`
   }, [photo.width, photo.height, photo.url.thumb, photo.url.large])
 
@@ -28,33 +31,49 @@ export function PhotoTile({
     <Link
       href={`/p/${photo.slug}`}
       scroll={false}
-      className="group relative block overflow-hidden rounded-[3px] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1"
-      style={{ width, height }}
+      className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)]"
+      style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
     >
       {placeholder && !loaded && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={placeholder} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+        <img src={placeholder} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]" />
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photo.url.thumb}
         srcSet={srcSet}
-        sizes={`${Math.round(width)}px`}
-        alt={photo.caption ?? `Photo ${index + 1}`}
+        sizes={`${colW}px`}
+        alt={photo.caption ?? `Frame ${frame}`}
         width={photo.width}
         height={photo.height}
         loading={priority ? "eager" : "lazy"}
         fetchPriority={priority ? "high" : undefined}
         decoding="async"
         onLoad={() => setLoaded(true)}
-        className="relative h-full w-full object-cover"
+        className={`relative h-full w-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] ${loaded ? "opacity-100" : "opacity-0"}`}
       />
-      {/* hover peek: gradient + place + index, plus cyan rule */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#080b12]/85 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      <div className="pointer-events-none absolute bottom-2 left-2.5 font-mono text-[9px] uppercase tracking-[0.12em] text-text opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        {place || " "} <span className="text-muted-2">· {String(index + 1).padStart(3, "0")}</span>
+
+      {/* persistent archival frame number */}
+      <span className="pointer-events-none absolute left-2 top-2 font-mono text-[9px] tracking-[0.14em] text-amber/85 mix-blend-screen drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        F{frame}
+      </span>
+
+      {/* registration ticks (corner brackets) intensify on hover */}
+      <Tick pos="left-1 top-1 border-l border-t" />
+      <Tick pos="right-1 top-1 border-r border-t" />
+      <Tick pos="left-1 bottom-1 border-l border-b" />
+      <Tick pos="right-1 bottom-1 border-r border-b" />
+
+      {/* hover scrim + serif caption / place */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/85 via-[#0a0908]/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-1 px-3 pb-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        {photo.caption && (
+          <p className="mb-0.5 line-clamp-1 font-serif text-[15px] italic leading-tight text-text">{photo.caption}</p>
+        )}
+        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-2">{place || "Untitled"}</span>
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] bg-cyan opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      {/* amber rule wipe */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left scale-x-0 bg-amber transition-transform duration-300 ease-out group-hover:scale-x-100" />
     </Link>
   )
 }

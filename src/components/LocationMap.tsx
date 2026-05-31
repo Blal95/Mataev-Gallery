@@ -54,14 +54,14 @@ export function LocationMap({
         }
       ).addTo(map)
 
-      // Cyan locator dot — a divIcon so we ship no marker image assets.
+      // Amber locator dot — a divIcon so we ship no marker image assets.
       L.marker([lat, lon], {
         keyboard: false,
         icon: L.divIcon({
           className: "",
           iconSize: [14, 14],
           iconAnchor: [7, 7],
-          html: '<div style="width:14px;height:14px;border-radius:9999px;background:#5BC0EB;box-shadow:0 0 0 4px rgba(91,192,235,0.22),0 0 14px #5BC0EB"></div>',
+          html: '<div style="width:14px;height:14px;border-radius:9999px;background:#e3a857;box-shadow:0 0 0 4px rgba(227,168,87,0.22),0 0 14px #e3a857"></div>',
         }),
       }).addTo(map)
     })()

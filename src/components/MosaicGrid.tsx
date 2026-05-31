@@ -1,12 +1,9 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { computeRows } from "@/lib/justified"
+import { computeColumns, columnsForWidth } from "@/lib/masonry"
 import { PhotoTile } from "./PhotoTile"
 import type { PhotoDTO } from "@/types/photo"
-
-const GAP = 12
-const TARGET = 300
 
 export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -19,18 +16,34 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
     return () => ro.disconnect()
   }, [])
 
-  const target = w < 640 ? 200 : TARGET
-  const rows = w > 0 ? computeRows(photos.map((p) => ({ id: p.id, aspect: p.aspect })), { containerWidth: w, targetHeight: target, gap: GAP }) : []
+  const columns = columnsForWidth(w)
+  const gap = w < 640 ? 8 : 14
+  const cols =
+    w > 0
+      ? computeColumns(
+          photos.map((p) => ({ id: p.id, aspect: p.aspect })),
+          { containerWidth: w, columns, gap },
+        )
+      : []
   const byId = new Map(photos.map((p, i) => [p.id, { p, i }]))
 
   return (
-    <div ref={ref} className="px-5">
-      <div className="flex flex-col" style={{ gap: GAP }}>
-        {rows.map((row, ri) => (
-          <div key={ri} className="flex" style={{ gap: GAP }}>
-            {row.boxes.map((b) => {
+    <div ref={ref} className="px-4 sm:px-5">
+      <div className="flex items-start" style={{ gap }}>
+        {cols.map((col, ci) => (
+          <div key={ci} className="flex min-w-0 flex-1 flex-col" style={{ gap }}>
+            {col.boxes.map((b) => {
               const entry = byId.get(b.id)!
-              return <PhotoTile key={b.id} photo={entry.p} width={b.width} height={b.height} index={entry.i} priority={ri === 0} />
+              return (
+                <PhotoTile
+                  key={b.id}
+                  photo={entry.p}
+                  width={b.width}
+                  height={b.height}
+                  index={entry.i}
+                  priority={entry.i < columns}
+                />
+              )
             })}
           </div>
         ))}
