@@ -33,6 +33,8 @@ button:focus-visible {
     animation-duration: 0.01ms !important;
   }
   .hover\:-translate-y-1:hover {
+    --tw-translate-y: 0 !important;
+    translate: none !important;
     transform: none !important;
   }
 }

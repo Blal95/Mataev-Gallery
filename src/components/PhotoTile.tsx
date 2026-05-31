@@ -13,6 +13,17 @@ export function PhotoTile({
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const place = [flagEmoji(photo.countryCode), photo.place].filter(Boolean).join(" ")
 
+  // Compute accurate width descriptors based on longest-edge scaling
+  const srcSet = useMemo(() => {
+    const longEdge = Math.max(photo.width, photo.height) || 1
+    const thumbW = Math.max(1, Math.round(photo.width * Math.min(1, 500 / longEdge)))
+    const largeW = Math.max(1, Math.round(photo.width * Math.min(1, 1600 / longEdge)))
+    if (thumbW === largeW) {
+      return `${photo.url.thumb} ${thumbW}w`
+    }
+    return `${photo.url.thumb} ${thumbW}w, ${photo.url.large} ${largeW}w`
+  }, [photo.width, photo.height, photo.url.thumb, photo.url.large])
+
   return (
     <Link
       href={`/p/${photo.slug}`}
@@ -27,13 +38,13 @@ export function PhotoTile({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={photo.url.thumb}
-        srcSet={`${photo.url.thumb} 500w, ${photo.url.large} 1600w`}
+        srcSet={srcSet}
         sizes={`${Math.round(width)}px`}
         alt={photo.caption ?? `Photo ${index + 1}`}
         width={photo.width}
         height={photo.height}
         loading={priority ? "eager" : "lazy"}
-        fetchPriority={priority ? "high" : "low"}
+        fetchPriority={priority ? "high" : undefined}
         decoding="async"
         onLoad={() => setLoaded(true)}
         className="relative h-full w-full object-cover"
