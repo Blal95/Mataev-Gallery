@@ -7,3 +7,5 @@ export const site = {
     email: "bilal@mataev.no",
   },
 } as const
+
+export const PAGE_SIZE = 48

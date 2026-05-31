@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og"
 import { db } from "@/lib/db"
 import { cdnBase } from "@/lib/env"
-import { getDetail } from "@/lib/detail"
+import { getPhotoDTO } from "@/lib/detail"
 
 export const runtime = "edge"
 export const size = { width: 1200, height: 630 }
@@ -9,11 +9,13 @@ export const contentType = "image/png"
 
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getDetail(db(), cdnBase(), id)
 
-  const caption = data?.photo.caption ?? "MATAEV"
-  const place = data?.photo.place ?? ""
-  const imgUrl = data?.photo.url.large ?? ""
+  let photo = null
+  try { photo = await getPhotoDTO(db(), cdnBase(), id) } catch {}
+
+  const caption = photo?.caption ?? "MATAEV"
+  const place = photo?.place ?? ""
+  const imgUrl = photo?.url.large ?? ""
 
   return new ImageResponse(
     (

@@ -4,11 +4,12 @@ import { buildPhotosResponse } from "@/lib/api"
 import { GalleryFeed } from "@/components/GalleryFeed"
 import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
+import { PAGE_SIZE } from "@/config/site"
 
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const { photos, tags, nextOffset } = await buildPhotosResponse(db(), cdnBase(), { limit: 48, offset: 0 })
+  const { photos, tags, nextOffset } = await buildPhotosResponse(db(), cdnBase(), { limit: PAGE_SIZE, offset: 0 })
   return (
     <main>
       <TagIndex tags={tags} />
