@@ -27,4 +27,4 @@ export interface PhotoDTO {
 }
 
 export interface TagCount { name: string; count: number }
-export interface PhotosResponse { photos: PhotoDTO[]; tags: TagCount[] }
+export interface PhotosResponse { photos: PhotoDTO[]; tags: TagCount[]; nextOffset?: number | null }

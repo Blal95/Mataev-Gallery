@@ -1,19 +1,23 @@
 import { db } from "@/lib/db"
 import { cdnBase } from "@/lib/env"
 import { buildPhotosResponse } from "@/lib/api"
-import { MosaicGrid } from "@/components/MosaicGrid"
+import { GalleryFeed } from "@/components/GalleryFeed"
 import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const { photos, tags } = await buildPhotosResponse(db(), cdnBase(), {})
+  const { photos, tags, nextOffset } = await buildPhotosResponse(db(), cdnBase(), { limit: 48, offset: 0 })
   return (
     <main>
       <TagIndex tags={tags} />
       <div className="pt-3.5">
-        {photos.length === 0 ? <EmptyState label="No photos yet" /> : <MosaicGrid photos={photos} />}
+        {photos.length === 0 ? (
+          <EmptyState label="No photos yet" />
+        ) : (
+          <GalleryFeed initialPhotos={photos} initialNextOffset={nextOffset ?? null} />
+        )}
       </div>
     </main>
   )

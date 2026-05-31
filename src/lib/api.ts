@@ -3,9 +3,20 @@ import type { PhotosResponse } from "@/types/photo"
 import { listPhotos, listTagCounts } from "./photos"
 import { rowToDTO } from "./serialize"
 
-export async function buildPhotosResponse(db: SqlDb, cdn: string, opts: { tag?: string }): Promise<PhotosResponse> {
+export async function buildPhotosResponse(
+  db: SqlDb,
+  cdn: string,
+  opts: { tag?: string; limit?: number; offset?: number },
+): Promise<PhotosResponse> {
   const [list, tags] = await Promise.all([listPhotos(db, opts), listTagCounts(db)])
-  return { photos: list.map(({ row, tags }) => rowToDTO(row, tags, cdn)), tags }
+  const photos = list.map(({ row, tags }) => rowToDTO(row, tags, cdn))
+  const nextOffset =
+    opts.limit != null
+      ? photos.length === opts.limit
+        ? (opts.offset ?? 0) + opts.limit
+        : null
+      : null
+  return { photos, tags, nextOffset }
 }
 
 export function corsHeaders(origin: string | null, allowed: string[]): Record<string, string> {
