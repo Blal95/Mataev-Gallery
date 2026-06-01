@@ -30,8 +30,7 @@ export function PhotoDetail({
   const next = neighbours[index + 1]
 
   const close = () => {
-    if (asModal) router.back()
-    else router.push("/")
+    router.push("/")
   }
 
   useEffect(() => {

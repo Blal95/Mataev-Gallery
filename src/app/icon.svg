@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#111111"/>
+  <!-- Simplified tower-M: solid silhouette so it stays legible at 16px -->
+  <g transform="translate(6.4 4.6) scale(0.26)" fill="#ffffff">
+    <rect x="26" y="182" width="148" height="7"/>
+    <path d="M58 50 L100 150 L142 50 L123 50 L100 118 L77 50 Z"/>
+    <g id="t">
+      <path d="M30 182 L42 48 L58 48 L66 182 Z"/>
+      <path d="M37 48 L61 48 L59 42 L39 42 Z"/>
+      <path d="M40 41 L58 41 L56 35 L42 35 Z"/>
+      <path d="M43 34 L55 34 L53 28 L45 28 Z"/>
+      <path d="M46 27 L52 27 L49 21 Z"/>
+    </g>
+    <use href="#t" transform="matrix(-1,0,0,1,200,0)"/>
+  </g>
+</svg>

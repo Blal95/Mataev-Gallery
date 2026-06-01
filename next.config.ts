@@ -1,4 +1,11 @@
 import type { NextConfig } from "next"
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
+
+// Enable Cloudflare bindings (D1, R2, env) in `next dev` so getCloudflareContext() works.
+// `remote = true` on the D1 binding in wrangler.toml points local `next dev`
+// at the live Cloudflare D1 (real photos), not an empty local replica.
+// Must run before the config is evaluated.
+void initOpenNextCloudflareForDev()
 
 const nextConfig: NextConfig = {
   // Images are pre-sized at upload and served from cdn.gallery.mataev.no,
@@ -7,9 +14,3 @@ const nextConfig: NextConfig = {
 }
 
 export default nextConfig
-
-// Enable Cloudflare bindings in `next dev`.
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
-// `remote = true` on the D1 binding in wrangler.toml points local `next dev`
-// at the live Cloudflare D1 (real photos), not an empty local replica.
-void initOpenNextCloudflareForDev()
