@@ -3,7 +3,7 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse,
 } from "@simplewebauthn/server"
 import type { SqlDb } from "./sqldb"
-import { cf } from "./env"
+import { webauthnRp } from "./webauthn-rp"
 
 const CHALLENGE_TTL = 5 * 60 * 1000
 
@@ -20,9 +20,9 @@ async function takeChallenge(db: SqlDb, id: string, kind: string): Promise<strin
 }
 
 export async function regOptions(db: SqlDb, sessionId: string) {
-  const env = cf()
+  const { rpID } = await webauthnRp()
   const opts = await generateRegistrationOptions({
-    rpName: "MATAEV Gallery", rpID: env.RP_ID, userName: "bilal", attestationType: "none",
+    rpName: "MATAEV Gallery", rpID, userName: "bilal", attestationType: "none",
     authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
   })
   await saveChallenge(db, sessionId, opts.challenge, "register")
@@ -30,11 +30,11 @@ export async function regOptions(db: SqlDb, sessionId: string) {
 }
 
 export async function regVerify(db: SqlDb, sessionId: string, body: unknown) {
-  const env = cf()
+  const { rpID, origin } = await webauthnRp()
   const expectedChallenge = await takeChallenge(db, sessionId, "register")
   if (!expectedChallenge) return { verified: false as const }
   const verification = await verifyRegistrationResponse({
-    response: body as never, expectedChallenge, expectedOrigin: env.RP_ORIGIN, expectedRPID: env.RP_ID,
+    response: body as never, expectedChallenge, expectedOrigin: origin, expectedRPID: rpID,
   })
   if (verification.verified && verification.registrationInfo) {
     const { credential } = verification.registrationInfo
@@ -45,21 +45,21 @@ export async function regVerify(db: SqlDb, sessionId: string, body: unknown) {
 }
 
 export async function authOptions(db: SqlDb, sessionId: string) {
-  const env = cf()
-  const opts = await generateAuthenticationOptions({ rpID: env.RP_ID, userVerification: "preferred" })
+  const { rpID } = await webauthnRp()
+  const opts = await generateAuthenticationOptions({ rpID, userVerification: "preferred" })
   await saveChallenge(db, sessionId, opts.challenge, "authenticate")
   return opts
 }
 
 export async function authVerify(db: SqlDb, sessionId: string, body: { id: string } & Record<string, unknown>) {
-  const env = cf()
+  const { rpID, origin } = await webauthnRp()
   const expectedChallenge = await takeChallenge(db, sessionId, "authenticate")
   if (!expectedChallenge) return { verified: false as const }
   const cred = await db.prepare("SELECT id, public_key, counter, transports FROM credentials WHERE id = ?")
     .bind(body.id).first<{ id: string; public_key: Uint8Array<ArrayBuffer>; counter: number; transports: string }>()
   if (!cred) return { verified: false as const }
   const verification = await verifyAuthenticationResponse({
-    response: body as never, expectedChallenge, expectedOrigin: env.RP_ORIGIN, expectedRPID: env.RP_ID,
+    response: body as never, expectedChallenge, expectedOrigin: origin, expectedRPID: rpID,
     credential: { id: cred.id, publicKey: cred.public_key, counter: cred.counter, transports: JSON.parse(cred.transports || "[]") },
   })
   if (verification.verified) {

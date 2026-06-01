@@ -146,8 +146,10 @@ export function LocationPicker({
     const t = setTimeout(() => {
       setSearching(true)
       fetch(`/api/admin/geocode?q=${encodeURIComponent(q)}`)
-        .then((r) => r.json())
-        .then((d: { results?: SearchHit[] }) => setHits(d.results ?? []))
+        .then(async (r) => {
+          const d = (await r.json()) as { results?: SearchHit[] }
+          setHits(d.results ?? [])
+        })
         .catch(() => setHits([]))
         .finally(() => setSearching(false))
     }, 350)
