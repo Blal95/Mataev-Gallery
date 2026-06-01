@@ -82,6 +82,33 @@ export async function listPhotos(
   return rows.map((row) => ({ row, tags: tagMap.get(row.id) ?? [] }))
 }
 
+/**
+ * Every published photo that carries GPS coordinates, lightweight shape for
+ * the atlas map. We only select the columns the map markers need rather than
+ * the full row, so the payload stays small even with many pins.
+ */
+export interface GeoPhoto {
+  slug: string
+  lat: number
+  lon: number
+  thumb: string
+  caption: string | null
+  place: string | null
+  countryCode: string | null
+}
+
+export async function listGeoPhotos(db: SqlDb): Promise<GeoPhoto[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT slug, gps_lat AS lat, gps_lon AS lon, r2_thumb AS thumb, caption, place, country_code AS countryCode
+       FROM photos
+       WHERE published = 1 AND gps_lat IS NOT NULL AND gps_lon IS NOT NULL
+       ORDER BY taken_at DESC, created_at DESC`,
+    )
+    .all<GeoPhoto>()
+  return results
+}
+
 export async function getPhoto(db: SqlDb, id: string): Promise<PhotoWithTags | null> {
   const row = await db.prepare(`SELECT ${COLS} FROM photos WHERE id = ? OR slug = ?`).bind(id, id).first<PhotoRow>()
   if (!row) return null

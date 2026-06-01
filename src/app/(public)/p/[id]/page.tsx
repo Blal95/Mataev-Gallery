@@ -23,21 +23,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
     const description = parts.length > 0 ? parts.join(" · ") : "Photograph by Bilal R. Mataev."
     const title = `${photo.caption || "Photo"} — MATAEV`
+    // Note: og/twitter images are intentionally omitted here. Next.js then
+    // falls back to the generated opengraph-image.tsx (the print-stamp card:
+    // photo + tower seal + EXIF). Setting images explicitly would override
+    // and suppress that file convention.
     return {
       title,
       description,
-      openGraph: {
-        title,
-        description,
-        type: "article",
-        images: [{ url: photo.url.large, width: photo.width, height: photo.height }],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [photo.url.large],
-      },
+      openGraph: { title, description, type: "article" },
+      twitter: { card: "summary_large_image", title, description },
     }
   } catch {
     return { title: "MATAEV — Photography" }

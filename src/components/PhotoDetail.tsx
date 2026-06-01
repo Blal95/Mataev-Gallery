@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { ExposureStrip } from "./ExposureStrip"
 import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
+import Logo from "./Logo"
 import type { PhotoDTO } from "@/types/photo"
 
 function Icon({ d, className }: { d: string; className?: string }) {
@@ -90,6 +91,17 @@ export function PhotoDetail({
             onClick={() => setInfo((v) => !v)}
             className="pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]"
           />
+        </div>
+
+        {/* Tower seal — signs the frame like a darkroom print stamp. Fades
+            out while the info panel is open so it never collides with it. */}
+        <div
+          className={`pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1.5 transition-opacity duration-300 sm:bottom-5 sm:right-6 ${info ? "opacity-0" : "opacity-100"}`}
+        >
+          <Logo iconOnly className="h-5 w-auto text-amber/55 sm:h-6" title="Mataev" />
+          <span className="font-mono text-[8.5px] uppercase tracking-[0.28em] text-muted/70 mix-blend-screen sm:text-[9px]">
+            Mataev
+          </span>
         </div>
 
         {/* flanking nav */}
