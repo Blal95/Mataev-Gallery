@@ -113,7 +113,13 @@ export function AtlasMap({ pins, className }: { pins: AtlasPin[]; className?: st
     }
   }, [])
 
-  return <div ref={ref} className={className} aria-label="Map of all photo locations" />
+  return (
+    <div
+      ref={ref}
+      className={className ? `atlas-map ${className}` : "atlas-map"}
+      aria-label="Map of all photo locations"
+    />
+  )
 }
 
 function escapeHtml(s: string): string {

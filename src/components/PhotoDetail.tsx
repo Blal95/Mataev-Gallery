@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { ExposureStrip } from "./ExposureStrip"
 import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
+import { PhotoComments } from "./PhotoComments"
 import Logo from "./Logo"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -30,15 +31,37 @@ export function PhotoDetail({
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
 
+  // In a modal the photo route was intercepted via the @modal parallel slot.
+  // Pushing "/" changes the URL but leaves the intercepted slot painted (Next
+  // parallel-route quirk), so the modal stays on screen — only router.back()
+  // unwinds the interception. The standalone page has no slot, so it pushes "/".
   const close = () => {
-    router.push("/")
+    if (asModal) router.back()
+    else router.push("/")
+  }
+
+  // Neighbour navigation inside a modal must REPLACE rather than push, so the
+  // history never grows past the single modal entry — that keeps close()'s
+  // back() reliably landing on the grid instead of a previous frame.
+  const goto = (slug: string) => {
+    if (asModal) router.replace(`/p/${slug}`)
+    else router.push(`/p/${slug}`)
   }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const typing =
+        e.target instanceof HTMLElement &&
+        (e.target.isContentEditable ||
+          e.target.tagName === "INPUT" ||
+          e.target.tagName === "TEXTAREA" ||
+          e.target.tagName === "SELECT")
+      // Don't toggle info or change frames while typing a comment (e.g. "i" in "writing").
+      if (typing && e.key !== "Escape") return
+
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
-      if (e.key === "ArrowLeft" && prev) router.push(`/p/${prev.slug}`)
-      if (e.key === "ArrowRight" && next) router.push(`/p/${next.slug}`)
+      if (e.key === "ArrowLeft" && prev) goto(prev.slug)
+      if (e.key === "ArrowRight" && next) goto(next.slug)
       if (e.key === "i" || e.key === "I") setInfo((v) => !v)
     }
     window.addEventListener("keydown", onKey)
@@ -56,12 +79,19 @@ export function PhotoDetail({
   return (
     <div className="flex h-full min-h-dvh w-full flex-col overflow-hidden bg-bg">
       {/* top chrome */}
-      <div className="relative z-30 flex items-center justify-between px-4 py-4 sm:px-6">
-        <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-amber">
+      <div className="relative z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
         </span>
-        <div className="flex items-center gap-1">
+        {!info && (
+          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
+            <span className="text-muted-2">← →</span> previous / next
+            <span className="mx-2 text-line-2">·</span>
+            <span className="text-muted-2">I</span> details
+          </p>
+        )}
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => setInfo((v) => !v)}
             aria-pressed={info}
@@ -104,26 +134,20 @@ export function PhotoDetail({
           </span>
         </div>
 
-        {/* flanking nav */}
+        {/* flanking nav — buttons (not Links) so modal navigation can REPLACE
+            history via goto(), keeping the back-stack flat for close(). */}
         <div className="pointer-events-none absolute inset-y-0 left-2 right-2 z-20 flex items-center justify-between sm:left-4 sm:right-4">
           {prev ? (
-            <Link href={`/p/${prev.slug}`} scroll={false} aria-label="Previous frame" className={navBtn}>
+            <button onClick={() => goto(prev.slug)} aria-label="Previous frame" className={navBtn}>
               <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
-            </Link>
+            </button>
           ) : <span className={navBtn} aria-hidden />}
           {next ? (
-            <Link href={`/p/${next.slug}`} scroll={false} aria-label="Next frame" className={navBtn}>
+            <button onClick={() => goto(next.slug)} aria-label="Next frame" className={navBtn}>
               <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
-            </Link>
+            </button>
           ) : <span className={navBtn} aria-hidden />}
         </div>
-
-        {/* hint */}
-        {!info && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 text-center font-mono text-[9px] uppercase tracking-[0.22em] text-muted">
-            Tap photo or press I for details · ← → to browse
-          </div>
-        )}
       </div>
 
       {/* info panel — slides up */}
@@ -155,11 +179,12 @@ export function PhotoDetail({
                 >
                   Full size ↗
                 </a>
+                <PhotoComments photoId={photo.id} />
               </div>
               <div className="shrink-0"><MapChip photo={photo} /></div>
             </div>
           </div>
-          <Filmstrip photos={neighbours} activeId={photo.id} />
+          <Filmstrip photos={neighbours} activeId={photo.id} onNavigate={asModal ? goto : undefined} />
         </div>
       </div>
     </div>

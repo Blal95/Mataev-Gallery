@@ -49,6 +49,13 @@ button:focus-visible {
   border-radius: 2px;
 }
 
+/* Leaflet — trap internal z-index (controls use ~1000) so maps never paint above modals (z-50). */
+.leaflet-container {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+}
+
 /* Atlas map — dark popups so Leaflet's default white card matches the theme */
 .atlas-popup .leaflet-popup-content-wrapper {
   background: var(--color-bg-2);

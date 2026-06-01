@@ -15,9 +15,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!(await isAuthed())) return Response.json({ error: "unauthorized" }, { status: 401 })
   if (!guard(req)) return Response.json({ error: "bad origin" }, { status: 403 })
   const { id } = await params
-  const body = (await req.json()) as { caption?: string; place?: string; country?: string; countryCode?: string; tags?: string; published?: number }
+  const body = (await req.json()) as {
+    caption?: string; place?: string | null; country?: string | null; countryCode?: string | null
+    lat?: number | null; lon?: number | null; tags?: string; published?: number
+  }
   await updatePhoto(db(), id, {
-    caption: body.caption, place: body.place, country: body.country, country_code: body.countryCode, published: body.published,
+    caption: body.caption,
+    place: body.place ?? undefined,
+    country: body.country ?? undefined,
+    country_code: body.countryCode ?? undefined,
+    published: body.published,
+    gps_lat: body.lat === undefined ? undefined : body.lat,
+    gps_lon: body.lon === undefined ? undefined : body.lon,
   })
   if (body.tags != null) await setTags(db(), id, parseTags(body.tags))
   return Response.json({ ok: true })

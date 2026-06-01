@@ -1,5 +1,5 @@
 import Database from "better-sqlite3"
-import { readFileSync } from "fs"
+import { readFileSync, readdirSync } from "fs"
 import { resolve } from "path"
 
 export type { SqlStatement, SqlDb } from "@/lib/sqldb"
@@ -27,7 +27,10 @@ class BetterStmt implements SqlStatement {
 export function makeTestDb(): SqlDb {
   const db = new Database(":memory:")
   db.pragma("foreign_keys = ON")
-  const sql = readFileSync(resolve(__dirname, "../migrations/0001_init.sql"), "utf8")
-  db.exec(sql)
+  const dir = resolve(__dirname, "../migrations")
+  const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()
+  for (const file of files) {
+    db.exec(readFileSync(resolve(dir, file), "utf8"))
+  }
   return { prepare: (s: string) => new BetterStmt(db, s) }
 }

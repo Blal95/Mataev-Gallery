@@ -138,9 +138,9 @@ export async function deletePhoto(db: SqlDb, id: string): Promise<string[]> {
 
 export async function updatePhoto(
   db: SqlDb, id: string,
-  patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published">>,
+  patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published" | "gps_lat" | "gps_lon">>,
 ): Promise<void> {
-  const ALLOWED = new Set(["caption", "place", "country", "country_code", "published"])
+  const ALLOWED = new Set(["caption", "place", "country", "country_code", "published", "gps_lat", "gps_lon"])
   const fields = Object.keys(patch).filter((f) => ALLOWED.has(f))
   if (fields.length) {
     const set = fields.map((f) => `${f} = ?`).join(", ")
