@@ -9,10 +9,8 @@ export function MapChip({ photo }: { photo: PhotoDTO }) {
   if (photo.lat == null || photo.lon == null) {
     if (!photo.place) return null
     return (
-      <div className="text-right">
-        <div className="text-[11px] text-text">
-          {flagEmoji(photo.countryCode)} {photo.place}
-        </div>
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">
+        {flagEmoji(photo.countryCode)} {photo.place}
       </div>
     )
   }

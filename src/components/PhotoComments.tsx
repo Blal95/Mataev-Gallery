@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface Comment {
   id: string
@@ -11,11 +11,13 @@ interface Comment {
 
 export function PhotoComments({ photoId }: { photoId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
+  const [open, setOpen] = useState(false)
   const [author, setAuthor] = useState("")
   const [body, setBody] = useState("")
   const [website, setWebsite] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/photos/${photoId}/comments`)
@@ -25,6 +27,11 @@ export function PhotoComments({ photoId }: { photoId: string }) {
   }, [photoId])
 
   useEffect(() => { void load() }, [load])
+
+  // Focus name field when form opens
+  useEffect(() => {
+    if (open) nameRef.current?.focus()
+  }, [open])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,11 +51,14 @@ export function PhotoComments({ photoId }: { photoId: string }) {
     const data = (await res.json()) as { comment: Comment }
     setComments((prev) => [...prev, data.comment])
     setBody("")
+    setOpen(false)
   }
 
   return (
     <section className="mt-6 border-t border-line pt-5">
-      <h3 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-2">Comments</h3>
+      <h3 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-2">
+        Comments{comments.length > 0 && <span className="ml-2 text-muted">{comments.length}</span>}
+      </h3>
 
       {comments.length > 0 && (
         <ul className="mb-4 space-y-3">
@@ -65,44 +75,63 @@ export function PhotoComments({ photoId }: { photoId: string }) {
         </ul>
       )}
 
-      <form onSubmit={submit} className="space-y-2">
-        <input
-          value={author}
-          onChange={(e) => setAuthor(e.target.value)}
-          placeholder="Your name"
-          maxLength={40}
-          required
-          className="w-full rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
-        />
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Leave a note…"
-          maxLength={500}
-          required
-          rows={3}
-          className="w-full resize-y rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
-        />
-        {/* Honeypot — hidden from humans */}
-        <input
-          type="text"
-          name="website"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-          tabIndex={-1}
-          autoComplete="off"
-          aria-hidden
-          className="absolute -left-[9999px] h-0 w-0 opacity-0"
-        />
-        {error && <p className="font-mono text-[10px] text-amber">{error}</p>}
+      {!open ? (
         <button
-          type="submit"
-          disabled={busy}
-          className="rounded border border-amber/40 bg-amber/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber disabled:opacity-50"
+          onClick={() => setOpen(true)}
+          className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted transition-colors hover:text-amber"
         >
-          {busy ? "Posting…" : "Post comment"}
+          + Leave a note
         </button>
-      </form>
+      ) : (
+        <form onSubmit={submit} className="space-y-2">
+          <input
+            ref={nameRef}
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="Your name"
+            maxLength={40}
+            required
+            className="w-full rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Leave a note…"
+            maxLength={500}
+            required
+            rows={3}
+            className="w-full resize-y rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
+          />
+          {/* Honeypot — hidden from humans */}
+          <input
+            type="text"
+            name="website"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+            className="absolute -left-[9999px] h-0 w-0 opacity-0"
+          />
+          {error && <p className="font-mono text-[10px] text-amber">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded border border-amber/40 bg-amber/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber disabled:opacity-50"
+            >
+              {busy ? "Posting…" : "Post"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null) }}
+              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-text"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   )
 }
