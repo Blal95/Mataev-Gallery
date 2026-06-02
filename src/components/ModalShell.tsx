@@ -14,7 +14,20 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     returnFocusRef.current = document.activeElement
     cardRef.current?.focus()
+
+    // Lock body scroll so iOS Safari doesn't shift fixed-position elements
+    const scrollY = window.scrollY
+    document.body.style.position = "fixed"
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = "100%"
+    document.body.style.overflowY = "scroll"
+
     return () => {
+      document.body.style.position = ""
+      document.body.style.top = ""
+      document.body.style.width = ""
+      document.body.style.overflowY = ""
+      window.scrollTo(0, scrollY)
       ;(returnFocusRef.current as HTMLElement | null)?.focus()
     }
   }, [])
