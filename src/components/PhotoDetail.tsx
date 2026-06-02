@@ -8,6 +8,7 @@ import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
 import { PhotoComments } from "./PhotoComments"
 import Logo from "./Logo"
+import { ShortcutsOverlay } from "./ShortcutsOverlay"
 import type { PhotoDTO } from "@/types/photo"
 
 function Icon({ d, className }: { d: string; className?: string }) {
@@ -25,9 +26,10 @@ export function PhotoDetail({
 }) {
   const router = useRouter()
   const [info, setInfo] = useState(false)
-  // Reset the info panel when navigating to a different frame (during render).
+  const [transitioning, setTransitioning] = useState(false)
+  // Reset the info panel + clear transition when navigating to a different frame.
   const [seenId, setSeenId] = useState(photo.id)
-  if (seenId !== photo.id) { setSeenId(photo.id); setInfo(false) }
+  if (seenId !== photo.id) { setSeenId(photo.id); setInfo(false); setTransitioning(false) }
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
 
@@ -44,6 +46,7 @@ export function PhotoDetail({
   // history never grows past the single modal entry — that keeps close()'s
   // back() reliably landing on the grid instead of a previous frame.
   const goto = (slug: string) => {
+    setTransitioning(true)
     if (asModal) router.replace(`/p/${slug}`)
     else router.push(`/p/${slug}`)
   }
@@ -78,6 +81,12 @@ export function PhotoDetail({
 
   return (
     <div className="flex h-full min-h-dvh w-full flex-col overflow-hidden bg-bg">
+      {/* navigation progress bar */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-x-0 top-0 z-50 h-[2px] bg-amber origin-left transition-transform duration-300 ease-out ${transitioning ? "scale-x-[0.85]" : "scale-x-0"}`}
+        style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
+      />
       {/* top chrome */}
       <div className="relative z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber">
@@ -119,7 +128,8 @@ export function PhotoDetail({
             width={photo.width}
             height={photo.height}
             onClick={() => setInfo((v) => !v)}
-            className="pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]"
+            onLoad={() => setTransitioning(false)}
+            className={`pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
           />
         </div>
 
@@ -195,6 +205,7 @@ export function PhotoDetail({
 
       {/* filmstrip — always visible, independent of info panel */}
       <Filmstrip photos={neighbours} activeId={photo.id} onNavigate={asModal ? goto : undefined} />
+      <ShortcutsOverlay />
     </div>
   )
 }

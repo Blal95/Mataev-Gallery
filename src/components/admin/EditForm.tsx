@@ -7,6 +7,7 @@ import { LocationPicker, type LocationValue } from "./LocationPicker"
 export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSaved: () => void; onDeleted: () => void }) {
   const [caption, setCaption] = useState(photo.caption ?? "")
   const [tags, setTags] = useState(photo.tags.map((t) => `#${t}`).join(" "))
+  const [published, setPublished] = useState(photo.published)
   const [location, setLocation] = useState<LocationValue>({
     lat: photo.lat,
     lon: photo.lon,
@@ -29,6 +30,7 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
         countryCode: location.countryCode || null,
         lat: location.lat,
         lon: location.lon,
+        published: published ? 1 : 0,
       }),
     })
     setBusy(false)
@@ -47,9 +49,16 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
       <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-sm text-text outline-none focus:border-cyan/50" />
       <input value={tags} onChange={(e) => setTags(e.target.value)} className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 font-mono text-xs text-text outline-none focus:border-cyan/50" />
       <LocationPicker value={location} onChange={setLocation} />
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <button onClick={save} disabled={busy} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">Save</button>
-        <button onClick={remove} disabled={busy} className="rounded border border-danger/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
+        <button
+          type="button"
+          onClick={() => setPublished((v) => !v)}
+          className={`rounded border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${published ? "border-amber/40 bg-amber/10 text-amber" : "border-line-2 text-muted hover:border-line-2 hover:text-muted-2"}`}
+        >
+          {published ? "Published" : "Draft"}
+        </button>
+        <button onClick={remove} disabled={busy} className="ml-auto rounded border border-danger/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
       </div>
     </div>
   )

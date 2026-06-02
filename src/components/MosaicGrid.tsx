@@ -39,7 +39,6 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
                   key={b.id}
                   photo={entry.p}
                   width={b.width}
-                  height={b.height}
                   index={entry.i}
                   priority={entry.i < columns}
                 />

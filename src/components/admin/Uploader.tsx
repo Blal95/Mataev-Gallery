@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toJpegIfHeic } from "@/lib/client/heic"
 import { extractExif } from "@/lib/client/exif"
 import { deriveImages } from "@/lib/client/derive"
@@ -13,8 +13,9 @@ interface Pending {
 
 export function Uploader({ onUploaded }: { onUploaded: () => void }) {
   const [items, setItems] = useState<Pending[]>([])
-
-  useEffect(() => () => { items.forEach((it) => URL.revokeObjectURL(it.preview)) }, [])
+  const itemsRef = useRef<Pending[]>([])
+  useEffect(() => { itemsRef.current = items }, [items])
+  useEffect(() => () => { itemsRef.current.forEach((it) => URL.revokeObjectURL(it.preview)) }, [])
 
   async function onFiles(files: FileList | null) {
     if (!files) return
@@ -58,12 +59,30 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     } catch { patch(i, { status: "error" }) }
   }
 
+  const readyCount = items.filter((it) => it.status === "ready").length
+
+  async function uploadAll() {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].status === "ready") await upload(i)
+    }
+  }
+
   return (
     <section className="space-y-4">
-      <label className="flex h-28 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line-2 font-mono text-[11px] uppercase tracking-[0.15em] text-muted hover:border-cyan/40">
-        Drop or choose photos
-        <input type="file" multiple accept="image/*,.heic,.heif" className="hidden" onChange={(e) => onFiles(e.target.files)} />
-      </label>
+      <div className="flex items-center gap-3">
+        <label className="flex h-28 flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line-2 font-mono text-[11px] uppercase tracking-[0.15em] text-muted hover:border-cyan/40">
+          Drop or choose photos
+          <input type="file" multiple accept="image/*,.heic,.heif" className="hidden" onChange={(e) => onFiles(e.target.files)} />
+        </label>
+        {readyCount > 1 && (
+          <button
+            onClick={uploadAll}
+            className="shrink-0 rounded border border-cyan/40 bg-cyan/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan hover:bg-cyan/15"
+          >
+            Post all ({readyCount})
+          </button>
+        )}
+      </div>
 
       <div className="space-y-3">
         {items.map((it, i) => (

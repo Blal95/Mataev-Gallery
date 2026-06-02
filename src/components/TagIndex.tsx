@@ -1,38 +1,82 @@
-import Link from "next/link"
+"use client"
+
+import { useTransition, useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/cn"
+import Link from "next/link"
 import type { TagCount } from "@/types/photo"
 
-function Chip({ href, active, label, count }: { href: string; active: boolean; label: string; count?: number }) {
+function Chip({
+  href, active, label, count, onClick, loading,
+}: {
+  href: string; active: boolean; label: string; count?: number
+  onClick: () => void; loading: boolean
+}) {
   return (
-    <Link
-      href={href}
+    <button
+      onClick={onClick}
       className={cn(
         "group inline-flex shrink-0 items-center gap-1.5 border-b-2 pb-1.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors duration-200",
         active ? "border-amber text-text" : "border-transparent text-muted-2 hover:text-text",
+        loading && "opacity-60",
       )}
     >
       <span className={cn("transition-colors", active ? "text-amber" : "text-muted group-hover:text-amber")}>
-        {active ? "▸" : ""}
+        {loading ? (
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
+        ) : active ? "▸" : ""}
       </span>
       <span>{label}</span>
       {count != null && (
         <span className={cn("text-[9px] tabular-nums", active ? "text-amber" : "text-muted")}>{count}</span>
       )}
-    </Link>
+    </button>
   )
 }
 
 export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  function navigate(href: string) {
+    setPendingHref(href)
+    startTransition(() => {
+      router.push(href)
+    })
+  }
+
+  // Clear pending once transition resolves
+  if (!isPending && pendingHref !== null) {
+    setPendingHref(null)
+  }
+
   return (
-    <nav className="sticky top-0 z-20 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md">
+    <nav aria-label="Filter by tag" className="sticky top-0 z-20 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md">
       <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-4 pt-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <Chip href="/" active={!active} label="All" />
-        {tags.map((t) => (
-          <Chip key={t.name} href={`/t/${t.name}`} active={active === t.name} label={t.name} count={t.count} />
-        ))}
+        <Chip
+          href="/"
+          active={!active}
+          label="All"
+          loading={pendingHref === "/"}
+          onClick={() => navigate("/")}
+        />
+        {tags.map((t) => {
+          const href = `/t/${t.name}`
+          return (
+            <Chip
+              key={t.name}
+              href={href}
+              active={active === t.name}
+              label={t.name}
+              count={t.count}
+              loading={pendingHref === href}
+              onClick={() => navigate(href)}
+            />
+          )
+        })}
       </div>
-      {/* Atlas — the map of every geotagged frame. Pinned right so it never
-          scrolls away with the tag list. */}
+      {/* Atlas — pinned right so it never scrolls with the tag list */}
       <Link
         href="/atlas"
         className="group flex shrink-0 items-center gap-1.5 border-l border-line px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-2 transition-colors hover:text-text sm:px-6"

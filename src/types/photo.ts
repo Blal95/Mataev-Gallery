@@ -23,6 +23,7 @@ export interface PhotoDTO {
   camera: string | null; lens: string | null
   focal: number | null; fNumber: number | null; exposure: number | null; iso: number | null
   bytes: number; format: string
+  published: boolean
   tags: string[]
 }
 

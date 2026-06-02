@@ -15,6 +15,7 @@ export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoD
     camera: formatCamera(row.camera_make, row.camera_model), lens: row.lens_model,
     focal: row.focal_length, fNumber: row.f_number, exposure: row.exposure_time, iso: row.iso,
     bytes: row.bytes, format: row.format,
+    published: row.published === 1,
     tags,
   }
 }

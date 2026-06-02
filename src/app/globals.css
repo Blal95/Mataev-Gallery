@@ -69,6 +69,12 @@ button:focus-visible {
 .atlas-popup .leaflet-popup-close-button { color: var(--color-muted); }
 .atlas-popup a[data-slug]:hover img { outline: 2px solid var(--color-amber); outline-offset: 1px; }
 
+/* Gallery tile entrance — staggered fade+lift per tile */
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Reduced-motion: collapse durations, disable hover transforms */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -81,5 +87,11 @@ button:focus-visible {
     transform: none !important;
     scale: none !important;
     translate: none !important;
+  }
+  /* Kill tile-in stagger so screen reader / low-motion users see content instantly */
+  [style*="tile-in"] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

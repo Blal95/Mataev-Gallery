@@ -12,7 +12,8 @@ function Tick({ pos }: { pos: string }) {
 
 export function PhotoTile({
   photo, width, index, priority,
-}: { photo: PhotoDTO; width: number; height?: number; index: number; priority?: boolean }) {
+}: { photo: PhotoDTO; width: number; index: number; priority?: boolean }) {
+  const delay = `${Math.min(index, 24) * 28}ms`
   const [loaded, setLoaded] = useState(false)
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const place = [flagEmoji(photo.countryCode), photo.place].filter(Boolean).join(" ")
@@ -32,7 +33,7 @@ export function PhotoTile({
       href={`/p/${photo.slug}`}
       scroll={false}
       className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)]"
-      style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
+      style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1, animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${delay} both` }}
     >
       {placeholder && !loaded && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -70,7 +71,7 @@ export function PhotoTile({
         {photo.caption && (
           <p className="mb-0.5 line-clamp-1 font-serif text-[15px] italic leading-tight text-text">{photo.caption}</p>
         )}
-        <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-2">{place || "Untitled"}</span>
+        {place && <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-2">{place}</span>}
       </div>
       {/* amber rule wipe */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left scale-x-0 bg-amber transition-transform duration-300 ease-out group-hover:scale-x-100" />

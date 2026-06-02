@@ -61,12 +61,12 @@ export function Filmstrip({
           return onNavigate ? (
             <button key={p.id} onClick={() => onNavigate(p.slug)} data-active={active} aria-label={p.caption ?? "View frame"}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url.thumb} alt={p.caption ?? ""} className={thumbClass(active)} />
+              <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
             </button>
           ) : (
             <Link key={p.id} href={`/p/${p.slug}`} scroll={false} data-active={active}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url.thumb} alt={p.caption ?? ""} className={thumbClass(active)} />
+              <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
             </Link>
           )
         })}

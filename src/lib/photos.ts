@@ -41,13 +41,7 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
       row.published, row.sort_index,
     )
     .run()
-  for (const name of tags) {
-    await db.prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)").bind(name).run()
-    const tag = await db.prepare("SELECT id FROM tags WHERE name = ?").bind(name).first<{ id: number }>()
-    if (tag) {
-      await db.prepare("INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)").bind(row.id, tag.id).run()
-    }
-  }
+  await upsertTags(db, row.id, tags)
 }
 
 export async function listPhotos(
@@ -150,9 +144,19 @@ export async function updatePhoto(
 
 export async function setTags(db: SqlDb, id: string, tags: string[]): Promise<void> {
   await db.prepare("DELETE FROM photo_tags WHERE photo_id = ?").bind(id).run()
-  for (const name of tags) {
-    await db.prepare("INSERT OR IGNORE INTO tags (name) VALUES (?)").bind(name).run()
-    const tag = await db.prepare("SELECT id FROM tags WHERE name = ?").bind(name).first<{ id: number }>()
-    if (tag) await db.prepare("INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES (?, ?)").bind(id, tag.id).run()
-  }
+  await upsertTags(db, id, tags)
+}
+
+async function upsertTags(db: SqlDb, photoId: string, tags: string[]): Promise<void> {
+  if (tags.length === 0) return
+  const ph = tags.map(() => "?").join(",")
+  await db.prepare(`INSERT OR IGNORE INTO tags (name) VALUES ${tags.map(() => "(?)").join(",")}`).bind(...tags).run()
+  const rows = await db
+    .prepare(`SELECT id, name FROM tags WHERE name IN (${ph})`)
+    .bind(...tags)
+    .all<{ id: number; name: string }>()
+  if (rows.results.length === 0) return
+  const vals = rows.results.map(() => "(?,?)").join(",")
+  const binds = rows.results.flatMap((r) => [photoId, r.id])
+  await db.prepare(`INSERT OR IGNORE INTO photo_tags (photo_id, tag_id) VALUES ${vals}`).bind(...binds).run()
 }
