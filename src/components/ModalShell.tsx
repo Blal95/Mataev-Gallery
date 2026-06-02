@@ -15,8 +15,11 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
     returnFocusRef.current = document.activeElement
     cardRef.current?.focus()
 
-    // Lock body scroll so iOS Safari doesn't shift fixed-position elements
+    // Lock body scroll so iOS Safari doesn't shift fixed-position elements.
+    // Persist scrollY in sessionStorage so restoration survives Next.js's own
+    // scroll handling on router.back(), which fires after this cleanup runs.
     const scrollY = window.scrollY
+    sessionStorage.setItem("gallery-scroll", String(scrollY))
     document.body.style.position = "fixed"
     document.body.style.top = `-${scrollY}px`
     document.body.style.width = "100%"
@@ -27,7 +30,14 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
       document.body.style.top = ""
       document.body.style.width = ""
       document.body.style.overflowY = ""
-      window.scrollTo(0, scrollY)
+      // Defer past Next.js's own popstate scroll handler so we win the race.
+      requestAnimationFrame(() => {
+        const saved = sessionStorage.getItem("gallery-scroll")
+        if (saved) {
+          sessionStorage.removeItem("gallery-scroll")
+          window.scrollTo(0, parseInt(saved, 10))
+        }
+      })
       ;(returnFocusRef.current as HTMLElement | null)?.focus()
     }
   }, [])

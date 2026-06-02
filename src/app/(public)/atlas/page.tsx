@@ -5,6 +5,7 @@ import { listGeoPhotos } from "@/lib/photos"
 import { flagEmoji } from "@/lib/format"
 import { AtlasMap, type AtlasPin } from "@/components/AtlasMap"
 import { EmptyState } from "@/components/EmptyState"
+import { NoScroll } from "@/components/NoScroll"
 
 export const dynamic = "force-dynamic"
 
@@ -30,7 +31,8 @@ export default async function AtlasPage() {
   const countries = new Set(geo.map((p) => p.countryCode).filter(Boolean)).size
 
   return (
-    <main className="flex min-h-dvh flex-col">
+    <main className="flex flex-1 flex-col overflow-hidden">
+      <NoScroll />
       <div className="flex items-baseline justify-between gap-4 border-b border-line px-4 py-4 sm:px-6">
         <h1 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text">
           <span className="text-amber">▸</span> Atlas

@@ -7,7 +7,7 @@ export default function PublicLayout({
   return (
     <div className="flex min-h-dvh flex-col">
       <Wordmark />
-      <div className="flex-1">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       <Footer />
       {modal}
     </div>
