@@ -288,11 +288,11 @@ export function PhotoDetail({
 
               {/* Location — links to Atlas centered on this photo */}
               {locationLine && (
-                <Link
+                <a
                   href={photo.lat != null && photo.lon != null
                     ? `/atlas?lat=${photo.lat}&lon=${photo.lon}`
                     : "/atlas"}
-                  className="mb-4 flex items-center gap-2 group/loc w-fit"
+                  className="mb-4 flex items-center gap-2 group/loc w-fit cursor-pointer"
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60 transition-colors group-hover/loc:text-amber" aria-hidden>
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
@@ -300,7 +300,7 @@ export function PhotoDetail({
                   <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2 transition-colors group-hover/loc:text-amber">
                     {flag && <span className="mr-1">{flag}</span>}{locationLine}
                   </span>
-                </Link>
+                </a>
               )}
 
               {/* Metadata */}
