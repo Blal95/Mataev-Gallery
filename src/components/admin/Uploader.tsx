@@ -31,8 +31,9 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
       if (exif.lat != null && exif.lon != null) {
         fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
           .then((r) => r.json())
-          .then((data: { result?: { place?: string | null; country?: string | null } }) => {
-            const r = data.result
+          .then((data) => {
+            const typed = data as { result?: { place?: string | null; country?: string | null } }
+            const r = typed.result
             if (!r) return
             const label = [r.place, r.country].filter(Boolean).join(", ")
             if (label) setItems((prev) => prev.map((it, i) => i === idx ? { ...it, place: label } : it))
