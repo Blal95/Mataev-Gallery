@@ -7,7 +7,7 @@ export interface ExtractedExif {
 }
 
 export async function extractExif(file: File): Promise<ExtractedExif> {
-  const x = (await exifr.parse(file, { tiff: true, exif: true, gps: true, ifd0: true, ifd1: false, iptc: false, xmp: false, jfif: false }).catch(() => null)) ?? {}
+  const x = (await exifr.parse(file, { tiff: true, exif: true, gps: true, iptc: false, xmp: false, jfif: false }).catch(() => null)) ?? {}
   const taken = x.DateTimeOriginal ?? x.CreateDate
   return {
     takenAt: taken ? new Date(taken).getTime() : null,
