@@ -9,6 +9,9 @@ import type { PhotoRow } from "@/types/photo"
 
 export const runtime = "nodejs"
 
+// Raise to 500 * 1024 * 1024 when longer video clips are needed
+const MAX_BYTES = 100 * 1024 * 1024
+
 interface MetaIn {
   caption?: string; tags?: string; takenAt?: number | null
   width: number; height: number; bytes: number; format: string; ext: string; colorSpace?: string | null
@@ -17,6 +20,8 @@ interface MetaIn {
   lat?: number | null; lon?: number | null; alt?: number | null
   place?: string | null; country?: string | null; countryCode?: string | null
   thumbhash?: string | null
+  mediaType?: string | null
+  duration?: number | null
 }
 
 export async function POST(req: Request) {
@@ -30,10 +35,10 @@ export async function POST(req: Request) {
   const meta = JSON.parse((form.get("meta") as string) || "{}") as MetaIn
   if (!original || !large || !thumb) return Response.json({ error: "missing files" }, { status: 400 })
 
-  if (original.size > 30 * 1024 * 1024) return Response.json({ error: "file too large" }, { status: 413 })
+  if (original.size > MAX_BYTES) return Response.json({ error: "file too large" }, { status: 413 })
 
   const id = newId()
-  const ALLOWED_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif"]
+  const ALLOWED_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif", "mp4", "mov", "webm"]
   const ext = ALLOWED_EXT.includes((meta.ext || "").toLowerCase()) ? meta.ext.toLowerCase() : "jpg"
   const keys = photoKeys(id, ext)
   await Promise.all([
@@ -58,6 +63,8 @@ export async function POST(req: Request) {
     gps_lat: meta.lat ?? null, gps_lon: meta.lon ?? null, gps_alt: meta.alt ?? null,
     place, country, country_code: countryCode, thumbhash: meta.thumbhash ?? null,
     r2_original: keys.original, r2_large: keys.large, r2_thumb: keys.thumb, published: 1, sort_index: null,
+    media_type: meta.mediaType === "video" ? "video" : "photo",
+    duration: meta.duration ?? null,
   }
   await insertPhoto(db(), row, parseTags(meta.tags ?? ""))
   return Response.json({ ok: true, id, slug: row.slug })
