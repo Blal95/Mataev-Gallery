@@ -65,6 +65,7 @@ export async function POST(req: Request) {
     r2_original: keys.original, r2_large: keys.large, r2_thumb: keys.thumb, published: 1, sort_index: null,
     media_type: meta.mediaType === "video" ? "video" : "photo",
     duration: meta.duration ?? null,
+    views: 0,
   }
   await insertPhoto(await db(), row, parseTags(meta.tags ?? ""))
   return Response.json({ ok: true, id, slug: row.slug })
