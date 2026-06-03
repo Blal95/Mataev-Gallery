@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ExposureStrip } from "./ExposureStrip"
 import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
@@ -30,6 +30,9 @@ export function PhotoDetail({
   // Clear transition flag when navigating to a different frame.
   const [seenId, setSeenId] = useState(photo.id)
   if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [canPlay, setCanPlay] = useState(false)
+  const isVideo = photo.mediaType === "video"
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
 
@@ -71,6 +74,21 @@ export function PhotoDetail({
     return () => window.removeEventListener("keydown", onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, asModal, prev, next, info])
+
+  // Autoplay video 1s after it signals canplay
+  useEffect(() => {
+    if (!isVideo || !canPlay) return
+    const t = setTimeout(() => { videoRef.current?.play().catch(() => {}) }, 1000)
+    return () => clearTimeout(t)
+  }, [isVideo, canPlay])
+
+  // Pause + reset canPlay when navigating to a different item
+  useEffect(() => {
+    if (!isVideo) return
+    videoRef.current?.pause()
+    setCanPlay(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photo.id])
 
   const date = photo.takenAt
     ? new Date(photo.takenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
@@ -121,16 +139,36 @@ export function PhotoDetail({
         <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
 
         <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo.url.large}
-            alt={photo.caption ?? `Frame ${index + 1}`}
-            width={photo.width}
-            height={photo.height}
-            onClick={() => setInfo((v) => !v)}
-            onLoad={() => setTransitioning(false)}
-            className={`pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
-          />
+          {isVideo ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video
+              ref={videoRef}
+              src={photo.url.original}
+              loop
+              muted
+              playsInline
+              onCanPlay={() => setCanPlay(true)}
+              onLoadedData={() => setTransitioning(false)}
+              onClick={() => {
+                const v = videoRef.current
+                if (!v) return
+                if (v.paused) v.play().catch(() => {})
+                else v.pause()
+              }}
+              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo.url.large}
+              alt={photo.caption ?? `Frame ${index + 1}`}
+              width={photo.width}
+              height={photo.height}
+              onClick={() => setInfo((v) => !v)}
+              onLoad={() => setTransitioning(false)}
+              className={`pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+            />
+          )}
         </div>
 
         {/* Tower seal — signs the frame like a darkroom print stamp. Fades
