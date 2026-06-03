@@ -7,7 +7,7 @@ const COLS =
   "id,slug,caption,taken_at,created_at,width,height,aspect,bytes,format,color_space," +
   "camera_make,camera_model,lens_model,focal_length,f_number,exposure_time,iso," +
   "gps_lat,gps_lon,gps_alt,place,country,country_code,thumbhash," +
-  "r2_original,r2_large,r2_thumb,published,sort_index,media_type,duration"
+  "r2_original,r2_large,r2_thumb,published,sort_index,media_type,duration,views"
 
 async function tagsFor(db: SqlDb, ids: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>()

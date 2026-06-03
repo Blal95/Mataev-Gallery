@@ -36,8 +36,23 @@ export function PhotoDetail({
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(photo.duration ?? 0)
 
+  const [showComments, setShowComments] = useState(false)
   const [seenId, setSeenId] = useState(photo.id)
-  if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
+  const [zoom, setZoom] = useState(1)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
+  const zoomRef = useRef(1)
+  const panRef = useRef({ x: 0, y: 0 })
+  const pinchStartDist = useRef<number | null>(null)
+  const pinchStartZoom = useRef(1)
+  const panStart = useRef<{ tx: number; ty: number; px: number; py: number } | null>(null)
+  const lastTapTime = useRef(0)
+  const stageRef = useRef<HTMLDivElement>(null)
+  if (seenId !== photo.id) {
+    setSeenId(photo.id); setTransitioning(false); setShowComments(false)
+    zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
+    setZoom(1); setPanX(0); setPanY(0)
+  }
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [canPlay, setCanPlay] = useState(false)
@@ -57,22 +72,54 @@ export function PhotoDetail({
 
   const goto = (slug: string) => {
     setTransitioning(true)
-    if (asModal) router.replace(`/p/${slug}`)
-    else router.push(`/p/${slug}`)
+    if (asModal) router.replace(`/image/${slug}`)
+    else router.push(`/image/${slug}`)
   }
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[1].clientX - e.touches[0].clientX
+      const dy = e.touches[1].clientY - e.touches[0].clientY
+      pinchStartDist.current = Math.sqrt(dx * dx + dy * dy)
+      pinchStartZoom.current = zoomRef.current
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
+    const now = Date.now()
+    if (now - lastTapTime.current < 300 && zoomRef.current > 1) {
+      zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
+      setZoom(1); setPanX(0); setPanY(0)
+      lastTapTime.current = 0
+      return
+    }
+    lastTapTime.current = now
+    if (zoomRef.current > 1) {
+      panStart.current = { tx: e.touches[0].clientX, ty: e.touches[0].clientY, px: panRef.current.x, py: panRef.current.y }
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
   const onTouchEnd = (e: React.TouchEvent) => {
+    if (pinchStartDist.current != null) {
+      pinchStartDist.current = null
+      if (zoomRef.current <= 1.05) {
+        zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
+        setZoom(1); setPanX(0); setPanY(0)
+      }
+      return
+    }
+    panStart.current = null
+    if (zoomRef.current > 1) return
     if (touchStartX.current == null || touchStartY.current == null) return
     const dx = e.changedTouches[0].clientX - touchStartX.current
     const dy = e.changedTouches[0].clientY - touchStartY.current
     touchStartX.current = null
     touchStartY.current = null
-    // Only horizontal swipes (dx dominates, min 50px threshold)
     if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
     if (dx < 0 && next) goto(next.slug)
     if (dx > 0 && prev) goto(prev.slug)
@@ -101,6 +148,19 @@ export function PhotoDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, asModal, prev, next, info, isVideo])
 
+  // Lock body scroll and disable pull-to-refresh while photo detail is open
+  useEffect(() => {
+    const { style } = document.body
+    const prevOverflow = style.overflow
+    const prevOverscroll = style.overscrollBehavior
+    style.overflow = "hidden"
+    style.overscrollBehavior = "none"
+    return () => {
+      style.overflow = prevOverflow
+      style.overscrollBehavior = prevOverscroll
+    }
+  }, [])
+
   // Persist info panel open/close state across navigation
   useEffect(() => {
     sessionStorage.setItem("detail-info", info ? "1" : "0")
@@ -113,9 +173,12 @@ export function PhotoDetail({
     return () => clearTimeout(t)
   }, [isVideo, canPlay])
 
-  // Reset large-image loaded state when photo changes so blur placeholder shows
+  // Reset large-image loaded state when photo changes. Includes a safety
+  // timeout so blur removes even if onLoad never fires (e.g. cached image).
   useEffect(() => {
     setLargeLoaded(false)
+    const t = setTimeout(() => setLargeLoaded(true), 1500)
+    return () => clearTimeout(t)
   }, [photo.id])
 
   // Preload neighbor large images so prev/next nav feels instant.
@@ -127,6 +190,33 @@ export function PhotoDetail({
     const imgs = urls.map((u) => { const i = new Image(); i.src = u; return i })
     return () => { imgs.forEach((i) => { i.src = "" }) }
   }, [prev, next])
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchStartDist.current != null) {
+        e.preventDefault()
+        const dx = e.touches[1].clientX - e.touches[0].clientX
+        const dy = e.touches[1].clientY - e.touches[0].clientY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const newZoom = Math.max(1, Math.min(5, pinchStartZoom.current * (dist / pinchStartDist.current)))
+        zoomRef.current = newZoom
+        setZoom(newZoom)
+        if (newZoom <= 1) { panRef.current = { x: 0, y: 0 }; setPanX(0); setPanY(0) }
+        return
+      }
+      if (e.touches.length === 1 && zoomRef.current > 1 && panStart.current) {
+        e.preventDefault()
+        const nx = panStart.current.px + (e.touches[0].clientX - panStart.current.tx)
+        const ny = panStart.current.py + (e.touches[0].clientY - panStart.current.ty)
+        panRef.current = { x: nx, y: ny }
+        setPanX(nx); setPanY(ny)
+      }
+    }
+    stage.addEventListener("touchmove", handleTouchMove, { passive: false })
+    return () => stage.removeEventListener("touchmove", handleTouchMove)
+  }, [])
 
   // Pause + reset when navigating away
   useEffect(() => {
@@ -209,22 +299,23 @@ export function PhotoDetail({
 
       {/* Stage */}
       <div
+        ref={stageRef}
         className="relative min-h-0 flex-1"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
+        <div className="absolute inset-0" onClick={() => setInfo((v) => !v)} aria-hidden />
 
         <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
-          {/* Thumbhash blur placeholder — shown until large media loads */}
-          {placeholder && !isVideo && !largeLoaded && (
+          {/* Thumbhash blur placeholder — fades out when large media finishes loading */}
+          {placeholder && !isVideo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={placeholder}
               alt=""
               aria-hidden
               style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
-              className="absolute max-h-full max-w-full scale-[1.02] object-contain opacity-90 blur-[14px] transition-opacity duration-300"
+              className={`pointer-events-none absolute max-h-full max-w-full scale-[1.02] object-contain blur-[14px] transition-opacity duration-500 ${largeLoaded ? "opacity-0" : "opacity-90"}`}
             />
           )}
           {isVideo ? (
@@ -243,6 +334,7 @@ export function PhotoDetail({
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
               className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -253,7 +345,8 @@ export function PhotoDetail({
               height={photo.height}
               onClick={() => setInfo((v) => !v)}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto relative max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${(transitioning || !largeLoaded) ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto relative max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
             />
           )}
         </div>
@@ -305,37 +398,49 @@ export function PhotoDetail({
       >
         <div className="overflow-hidden">
           <div className="border-t border-line-2 bg-bg-2/95 backdrop-blur-md">
+
+            {/* Main metadata — scrollable, capped height */}
             <div
-              className="mx-auto max-w-[900px] overflow-y-auto px-4 pb-6 pt-5 sm:px-6"
-              style={{ maxHeight: "min(55vh, 400px)" }}
+              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-6 sm:px-6"
+              style={{ maxHeight: "min(55vh, 380px)" }}
             >
               {/* Caption */}
               {photo.caption && (
-                <p className="mb-4 font-serif text-[19px] italic leading-snug text-text sm:text-[21px]">
+                <p className="mb-5 font-serif text-[19px] italic leading-snug text-text sm:text-[21px]">
                   {photo.caption}
                 </p>
               )}
 
-              {/* Location — links to Atlas centered on this photo */}
-              {locationLine && (
-                <a
-                  href={photo.lat != null && photo.lon != null
-                    ? `/atlas?lat=${photo.lat}&lon=${photo.lon}`
-                    : "/atlas"}
-                  className="mb-4 flex items-center gap-2 group/loc w-fit cursor-pointer"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60 transition-colors group-hover/loc:text-amber" aria-hidden>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                  </svg>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2 transition-colors group-hover/loc:text-amber">
-                    {flag && <span className="mr-1">{flag}</span>}{locationLine}
-                  </span>
-                </a>
+              {/* Location + Date — one row */}
+              {(locationLine || date) && (
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  {locationLine ? (
+                    <a
+                      href={photo.lat != null && photo.lon != null
+                        ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
+                        : "/atlas"}
+                      className="flex items-center gap-2 group/loc"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60 transition-colors group-hover/loc:text-amber" aria-hidden>
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                      </svg>
+                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-2 transition-colors group-hover/loc:text-amber">
+                        {flag && <span className="mr-1">{flag}</span>}{locationLine}
+                      </span>
+                    </a>
+                  ) : <span />}
+                  {(date || photo.views > 0) && (
+                    <div className="flex flex-col items-end gap-0.5">
+                      {date && <span className="font-mono text-[11px] uppercase tracking-[0.10em] text-muted">{date}</span>}
+                      {photo.views > 0 && <span className="font-mono text-[9px] uppercase tracking-[0.10em] text-muted/60">{photo.views.toLocaleString()} views</span>}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Metadata */}
               {isVideo ? (
-                <div className="mb-3 font-mono text-[10px] uppercase leading-[1.8] tracking-[0.08em] text-muted-2">
+                <div className="mb-5 font-mono text-[11px] uppercase leading-[1.8] tracking-[0.08em] text-muted-2">
                   {formatDuration(photo.duration) && (
                     <span className="mr-3 text-cyan">{formatDuration(photo.duration)}</span>
                   )}
@@ -343,26 +448,19 @@ export function PhotoDetail({
                   <span>{formatBytes(photo.bytes)}</span>
                 </div>
               ) : (
-                <div className="mb-3">
+                <div className="mb-5">
                   <ExposureStrip photo={photo} />
-                </div>
-              )}
-
-              {/* Date */}
-              {date && (
-                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
-                  {date}
                 </div>
               )}
 
               {/* Tags */}
               {photo.tags.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-1.5">
+                <div className="mb-5 flex flex-wrap gap-1.5">
                   {photo.tags.map((t) => (
                     <Link
                       key={t}
                       href={`/t/${t}`}
-                      className="rounded-full border border-amber/25 px-2.5 py-0.5 font-mono text-[10px] text-amber transition-colors hover:bg-amber/10"
+                      className="rounded-full border border-amber/25 px-3 py-1.5 font-mono text-[10px] text-amber transition-colors hover:bg-amber/10"
                     >
                       #{t}
                     </Link>
@@ -370,20 +468,38 @@ export function PhotoDetail({
                 </div>
               )}
 
-              {/* Full size */}
-              <a
-                href={photo.url.original}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                className="mb-5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-muted transition-colors hover:text-amber"
-              >
-                Full size ↗
-              </a>
-
-              {/* Comments */}
-              <PhotoComments photoId={photo.id} />
+              {/* Full size + Comments toggle */}
+              <div className="flex items-center justify-between gap-4">
+                <a
+                  href={photo.url.original}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
+                >
+                  Full size ↗
+                </a>
+                <button
+                  onClick={() => setShowComments((v) => !v)}
+                  className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
+                >
+                  {showComments ? "Hide comments" : "Comments →"}
+                </button>
+              </div>
             </div>
+
+            {/* Comments — outside scrollable div so expansion grows the panel upward */}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${showComments ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+              <div className="overflow-hidden">
+                <div
+                  className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-6 sm:px-6"
+                  style={{ maxHeight: "min(35vh, 280px)" }}
+                >
+                  <PhotoComments photoId={photo.id} />
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

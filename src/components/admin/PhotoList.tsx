@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { EditForm } from "./EditForm"
+import { BulkTagger } from "./BulkTagger"
 import type { PhotoDTO, PhotosResponse } from "@/types/photo"
 
 export function PhotoList({ reloadKey }: { reloadKey: number }) {
   const [photos, setPhotos] = useState<PhotoDTO[]>([])
   const [open, setOpen] = useState<string | null>(null)
+  const [bulkMode, setBulkMode] = useState(false)
 
   async function load() {
     const data = (await (await fetch("/api/photos")).json()) as PhotosResponse
@@ -17,7 +19,16 @@ export function PhotoList({ reloadKey }: { reloadKey: number }) {
 
   return (
     <section className="space-y-2">
-      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{photos.length} photos</p>
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted">{photos.length} photos</p>
+        <button
+          onClick={() => setBulkMode(v => !v)}
+          className={`font-mono text-[9px] uppercase tracking-[0.12em] transition-colors ${bulkMode ? "text-cyan" : "text-muted hover:text-text"}`}
+        >
+          Bulk tag
+        </button>
+      </div>
+      {bulkMode && <BulkTagger photos={photos} />}
       {photos.map((p) => (
         <div key={p.id} className="space-y-2">
           <button onClick={() => setOpen(open === p.id ? null : p.id)} className="flex w-full items-center gap-3 rounded-lg border border-line p-2 text-left hover:border-line-2">

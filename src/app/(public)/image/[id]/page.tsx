@@ -39,11 +39,29 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getDetail(await db(), id)
+  const database = await db()
+  const data = await getDetail(database, id)
   if (!data) notFound()
+  database.prepare("UPDATE photos SET views = views + 1 WHERE id = ? OR slug = ?").bind(id, id).run().catch(() => {})
+  const { photo } = data
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ImageObject",
+    "url": `https://gallery.mataev.no/image/${photo.slug}`,
+    "contentUrl": `https://gallery.mataev.no${photo.url.original}`,
+    "thumbnailUrl": `https://gallery.mataev.no${photo.url.thumb}`,
+    "name": photo.caption ?? "Photograph",
+    "author": { "@type": "Person", "name": "Bilal R. Mataev" },
+    ...(photo.takenAt ? { "dateCreated": new Date(photo.takenAt).toISOString() } : {}),
+    ...(photo.place ? { "contentLocation": { "@type": "Place", "name": photo.place } } : {}),
+    ...(photo.width && photo.height ? { "width": photo.width, "height": photo.height } : {}),
+  }
   return (
-    <div className="fixed inset-0 z-50">
-      <PhotoDetail {...data} asModal={false} />
-    </div>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <div className="fixed inset-0 z-50">
+        <PhotoDetail {...data} asModal={false} />
+      </div>
+    </>
   )
 }

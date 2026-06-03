@@ -22,5 +22,6 @@ export function rowToDTO(row: PhotoRow, tags: string[]): PhotoDTO {
     tags,
     mediaType: row.media_type === 'video' ? 'video' : 'photo',
     duration: row.duration,
+    views: row.views ?? 0,
   }
 }

@@ -21,11 +21,15 @@ export function formatFocal(mm: number | null): string | null {
   return mm == null ? null : `${Math.round(mm)}mm`
 }
 
-export function flagEmoji(code: string | null): string {
-  if (!code || code.length !== 2) return ""
-  const A = 0x1f1e6
-  const up = code.toUpperCase()
-  return String.fromCodePoint(A + (up.charCodeAt(0) - 65), A + (up.charCodeAt(1) - 65))
+export function flagUrl(code: string | null): string | null {
+  if (!code || code.length !== 2) return null
+  return `https://flagcdn.com/32x24/${code.toLowerCase()}.png`
+}
+
+export function flagEmoji(code: string | null): string | null {
+  if (!code || code.length !== 2) return null
+  const offset = 0x1F1E6 - 65
+  return [...code.toUpperCase()].map(c => String.fromCodePoint(c.codePointAt(0)! + offset)).join("")
 }
 
 export function formatDuration(seconds: number | null): string | null {

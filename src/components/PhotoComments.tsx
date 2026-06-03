@@ -11,6 +11,7 @@ interface Comment {
 
 export function PhotoComments({ photoId }: { photoId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [author, setAuthor] = useState("")
   const [body, setBody] = useState("")
@@ -21,9 +22,11 @@ export function PhotoComments({ photoId }: { photoId: string }) {
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/photos/${photoId}/comments`)
-    if (!res.ok) return
-    const data = (await res.json()) as { comments: Comment[] }
-    setComments(data.comments)
+    if (res.ok) {
+      const data = (await res.json()) as { comments: Comment[] }
+      setComments(data.comments)
+    }
+    setLoading(false)
   }, [photoId])
 
   useEffect(() => { void load() }, [load])
@@ -55,12 +58,16 @@ export function PhotoComments({ photoId }: { photoId: string }) {
   }
 
   return (
-    <section className="mt-6 border-t border-line pt-5">
+    <section className="mt-5 border-t border-line-2 pt-5">
       <h3 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-2">
-        Comments{comments.length > 0 && <span className="ml-2 text-muted">{comments.length}</span>}
+        Comments{!loading && comments.length > 0 && <span className="ml-2 text-muted">{comments.length}</span>}
       </h3>
 
-      {comments.length > 0 && (
+      {loading ? (
+        <p className="mb-4 font-mono text-[9px] uppercase tracking-[0.12em] text-muted animate-pulse">
+          Loading…
+        </p>
+      ) : comments.length > 0 ? (
         <ul className="mb-4 space-y-3">
           {comments.map((c) => (
             <li key={c.id} className="text-sm">
@@ -73,16 +80,16 @@ export function PhotoComments({ photoId }: { photoId: string }) {
             </li>
           ))}
         </ul>
-      )}
+      ) : null}
 
-      {!open ? (
+      {!loading && !open ? (
         <button
           onClick={() => setOpen(true)}
           className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted transition-colors hover:text-amber"
         >
           + Leave a note
         </button>
-      ) : (
+      ) : !loading && (
         <form onSubmit={submit} className="space-y-2">
           <input
             ref={nameRef}

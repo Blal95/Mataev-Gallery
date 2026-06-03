@@ -12,6 +12,7 @@ export interface PhotoRow {
   published: number; sort_index: number | null
   media_type: string        // 'photo' | 'video'
   duration: number | null   // seconds; null for photos
+  views: number
 }
 
 export interface PhotoDTO {
@@ -29,6 +30,7 @@ export interface PhotoDTO {
   tags: string[]
   mediaType: 'photo' | 'video'
   duration: number | null
+  views: number
 }
 
 export interface TagCount { name: string; count: number }

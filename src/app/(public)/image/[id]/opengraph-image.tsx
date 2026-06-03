@@ -7,7 +7,7 @@ import {
   formatAperture,
   formatExposure,
   formatFocal,
-  flagEmoji,
+  flagUrl,
 } from "@/lib/format"
 
 export const runtime = "edge"
@@ -60,7 +60,8 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   } catch {}
 
   const caption = photo?.caption ?? null
-  const place = photo ? [flagEmoji(photo.countryCode), photo.place].filter(Boolean).join(" ") : ""
+  const placeFlagSrc = photo ? flagUrl(photo.countryCode) : null
+  const place = photo?.place ?? ""
   // Satori (next/og) can only decode PNG/JPEG — the large/thumb renditions are
   // WebP, so they render blank. The original is the only JPEG/PNG rendition, so
   // use it when the source format is decodable; otherwise leave the panel dark.
@@ -135,10 +136,11 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
                 {caption}
               </span>
             ) : null}
-            {place ? (
-              <span style={{ fontSize: 15, color: AMBER, letterSpacing: "0.16em", textTransform: "uppercase" }}>
-                {place}
-              </span>
+            {(placeFlagSrc || place) ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {placeFlagSrc ? <img src={placeFlagSrc} alt="" width={32} height={24} /> : null}
+                {place ? <span style={{ fontSize: 15, color: AMBER, letterSpacing: "0.16em", textTransform: "uppercase" }}>{place}</span> : null}
+              </div>
             ) : null}
           </div>
 

@@ -3,7 +3,7 @@ import { isAuthed } from "@/lib/authctx"
 import { putPhotoObject, photoKeys } from "@/lib/r2"
 import { insertPhoto } from "@/lib/photos"
 import { reverseGeocode } from "@/lib/geocode"
-import { newId, slugify } from "@/lib/ids"
+import { newId } from "@/lib/ids"
 import { parseTags } from "@/lib/tags"
 import type { PhotoRow } from "@/types/photo"
 
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   }
 
   const row: PhotoRow = {
-    id, slug: `${slugify(meta.caption || "photo")}-${id.slice(-5).toLowerCase()}`,
+    id, slug: `${meta.mediaType === "video" ? "video" : "photo"}-${id.slice(-8).toLowerCase()}`,
     caption: meta.caption?.trim() || null, taken_at: meta.takenAt ?? null, created_at: Date.now(),
     width: meta.width, height: meta.height, aspect: meta.width / meta.height,
     bytes: meta.bytes, format: meta.format, color_space: meta.colorSpace ?? null,

@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { db } from "@/lib/db"
 import { listGeoPhotos } from "@/lib/photos"
-import { flagEmoji } from "@/lib/format"
 import { AtlasMap, type AtlasPin } from "@/components/AtlasMap"
 import { EmptyState } from "@/components/EmptyState"
 import { NoScroll } from "@/components/NoScroll"
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
   description: "Every geotagged photograph, plotted on a map.",
 }
 
-export default async function AtlasPage({ searchParams }: { searchParams: Promise<{ lat?: string; lon?: string; z?: string }> }) {
+export default async function AtlasPage({ searchParams }: { searchParams: Promise<{ lat?: string; lon?: string; z?: string; slug?: string }> }) {
   const sp = await searchParams
   const centerLat = sp.lat ? parseFloat(sp.lat) : null
   const centerLon = sp.lon ? parseFloat(sp.lon) : null
@@ -21,6 +20,7 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
     ? ([centerLat, centerLon] as [number, number])
     : undefined
   const initialZoom = sp.z ? parseInt(sp.z) : 11
+  const selectedSlug = sp.slug ?? null
 
   const geo = await listGeoPhotos(await db())
   const pins: AtlasPin[] = geo.map((p) => ({
@@ -30,7 +30,7 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
     thumb: `/img/${p.slug}/thumb`,
     caption: p.caption,
     place: p.place,
-    flag: flagEmoji(p.countryCode),
+    countryCode: p.countryCode,
   }))
 
   // Distinct countries, for the small caption line under the header.
@@ -52,7 +52,7 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
       {pins.length === 0 ? (
         <EmptyState label="No geotagged photos yet" />
       ) : (
-        <AtlasMap pins={pins} className="flex-1" initialCenter={initialCenter} initialZoom={initialZoom} />
+        <AtlasMap pins={pins} className="flex-1" initialCenter={initialCenter} initialZoom={initialZoom} selectedSlug={selectedSlug} />
       )}
     </main>
   )

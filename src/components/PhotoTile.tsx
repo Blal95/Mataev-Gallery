@@ -31,7 +31,7 @@ export function PhotoTile({
 
   return (
     <Link
-      href={`/p/${photo.slug}`}
+      href={`/image/${photo.slug}`}
       scroll={false}
       className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)] active:scale-[0.985] active:duration-75"
       style={{
@@ -88,9 +88,8 @@ export function PhotoTile({
           </p>
         )}
         {locationLine && (
-          <p className="flex items-center gap-1 font-mono text-[8.5px] uppercase tracking-[0.18em] text-white/55">
-            {flag && <span className="text-[10px] not-italic">{flag}</span>}
-            {locationLine}
+          <p className="font-mono text-[8.5px] uppercase tracking-[0.18em] text-white/55">
+            {flag && <span className="text-[10px] not-italic">{flag}</span>} {locationLine}
           </p>
         )}
       </div>

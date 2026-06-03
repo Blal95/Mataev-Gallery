@@ -64,7 +64,7 @@ export function Filmstrip({
               <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
             </button>
           ) : (
-            <Link key={p.id} href={`/p/${p.slug}`} scroll={false} data-active={active}>
+            <Link key={p.id} href={`/image/${p.slug}`} scroll={false} data-active={active}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
             </Link>

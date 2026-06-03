@@ -10,6 +10,7 @@ binding = "ASSETS"
 [[r2_buckets]]
 binding = "PHOTOS"
 bucket_name = "gallery-photos"
+remote = true
 
 [[d1_databases]]
 binding = "DB"

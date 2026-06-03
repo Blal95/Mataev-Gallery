@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const photoUrls: MetadataRoute.Sitemap = photosWithTags.map(({ row, tags }) => {
       const dto = rowToDTO(row, tags)
       return {
-        url: `${BASE}/p/${dto.slug}`,
+        url: `${BASE}/image/${dto.slug}`,
         lastModified: row.created_at ? new Date(row.created_at * 1000) : undefined,
         changeFrequency: "monthly",
         priority: 0.7,
