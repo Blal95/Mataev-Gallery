@@ -7,6 +7,7 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare"
 // Must run before the config is evaluated.
 void initOpenNextCloudflareForDev()
 
+/** @type {import('next').NextConfig} */
 const nextConfig: NextConfig = {
   // Images are pre-sized at upload and served from cdn.gallery.mataev.no,
   // so the runtime optimizer is disabled (cheaper on Workers).

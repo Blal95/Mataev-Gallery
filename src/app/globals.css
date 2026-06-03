@@ -7,9 +7,9 @@
   --color-text: #efe8dd;
   --color-muted: #6b6258;
   --color-muted-2: #9b8f80;
-  --color-amber: #e3a857;       /* film amber — the accent */
+  --color-amber: #e3a857;        /* film amber — the accent */
   --color-amber-deep: #c0823a;
-  --color-cyan: #e3a857;        /* legacy alias → amber, so stray refs stay on-brand */
+  --color-cyan: #e3a857;         /* legacy alias → amber, so stray refs stay on-brand */
   --color-line: #1c1814;
   --color-line-2: #2a241d;
   --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
@@ -28,6 +28,25 @@ body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--color-line-2); border-radius: 999px; border: 2px solid var(--color-bg); }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
+
+/* Entry animation for the photo/video detail view */
+@keyframes photo-reveal {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-photo-reveal {
+  animation: photo-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Flash animation for play/pause center indicator */
+@keyframes indicator-flash {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+.animate-indicator {
+  animation: indicator-flash 0.5s ease-out forwards;
+}
 
 /* Film grain — fixed, faint, non-interactive. Gives an archival texture. */
 body::after {

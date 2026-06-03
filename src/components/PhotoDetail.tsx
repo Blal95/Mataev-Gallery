@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ExposureStrip } from "./ExposureStrip"
-import { MapChip } from "./MapChip"
 import { Filmstrip } from "./Filmstrip"
 import { PhotoComments } from "./PhotoComments"
 import Logo from "./Logo"
@@ -27,6 +26,9 @@ export function PhotoDetail({
   const router = useRouter()
   const [info, setInfo] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
+  const [indicator, setIndicator] = useState<"play" | "pause" | null>(null)
+  
   // Clear transition flag when navigating to a different frame.
   const [seenId, setSeenId] = useState(photo.id)
   if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
@@ -56,6 +58,19 @@ export function PhotoDetail({
     else router.push(`/p/${slug}`)
   }
 
+  const togglePlayback = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) {
+      v.play().catch(() => {})
+      setIndicator("play")
+    } else {
+      v.pause()
+      setIndicator("pause")
+    }
+    setTimeout(() => setIndicator(null), 500)
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing =
@@ -71,6 +86,7 @@ export function PhotoDetail({
       if (e.key === "ArrowLeft" && prev) goto(prev.slug)
       if (e.key === "ArrowRight" && next) goto(next.slug)
       if (e.key === "i" || e.key === "I") setInfo((v) => !v)
+      if (e.key === "m" || e.key === "M") setIsMuted((v) => !v)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -89,7 +105,7 @@ export function PhotoDetail({
     if (!isVideo) return
     videoRef.current?.pause()
     setCanPlay(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo.id, isVideo])
 
   const date = photo.takenAt
@@ -121,6 +137,19 @@ export function PhotoDetail({
           </p>
         )}
         <div className="flex shrink-0 items-center gap-1">
+          {isVideo && (
+            <button 
+              onClick={() => setIsMuted(!isMuted)} 
+              className="mr-2 inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-amber"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
+              {isMuted ? (
+                <Icon d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" className="h-[18px] w-[18px]" />
+              ) : (
+                <Icon d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" className="h-[18px] w-[18px]" />
+              )}
+            </button>
+          )}
           <button
             onClick={() => setInfo((v) => !v)}
             aria-pressed={info}
@@ -141,36 +170,42 @@ export function PhotoDetail({
         <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
 
         <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
-          {isVideo ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
-            <video
-              ref={videoRef}
-              src={photo.url.original}
-              loop
-              muted
-              playsInline
-              onCanPlay={() => setCanPlay(true)}
-              onLoad={() => setTransitioning(false)}
-              onClick={() => {
-                const v = videoRef.current
-                if (!v) return
-                if (v.paused) v.play().catch(() => {})
-                else v.pause()
-              }}
-              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo.url.large}
-              alt={photo.caption ?? `Frame ${index + 1}`}
-              width={photo.width}
-              height={photo.height}
-              onClick={() => setInfo((v) => !v)}
-              onLoad={() => setTransitioning(false)}
-              className={`pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
-            />
-          )}
+          <div className="relative animate-photo-reveal">
+            {isVideo ? (
+              <video
+                ref={videoRef}
+                src={photo.url.original}
+                loop
+                muted={isMuted}
+                playsInline
+                onCanPlay={() => setCanPlay(true)}
+                onLoad={() => setTransitioning(false)}
+                onClick={togglePlayback}
+                className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              />
+            ) : (
+              <img
+                src={photo.url.large}
+                alt={photo.caption ?? `Frame ${index + 1}`}
+                width={photo.width}
+                height={photo.height}
+                onClick={() => setInfo((v) => !v)}
+                onLoad={() => setTransitioning(false)}
+                className={`pointer-events-auto max-h-full max-w-full cursor-zoom-in object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              />
+            )}
+
+            {/* Play/Pause center indicator overlay */}
+            {indicator && (
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex h-20 w-20 items-center justify-center rounded-full bg-bg/40 backdrop-blur-sm animate-indicator">
+                 {indicator === "play" ? (
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-amber translate-x-1"><path d="M8 5v14l11-7z"/></svg>
+                 ) : (
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-amber"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                 )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tower seal — signs the frame like a darkroom print stamp. Fades
@@ -208,7 +243,7 @@ export function PhotoDetail({
         <div className="overflow-hidden">
           <div className="border-t border-line-2 bg-bg-2/95 backdrop-blur-md">
             <div
-              className="mx-auto max-w-[900px] overflow-y-auto px-5 pb-4 pt-5 sm:px-6"
+              className="mx-auto max-w-[900px] overflow-y-auto px-5 pb-8 pt-5 sm:px-6"
               style={{ maxHeight: "min(58vh, 420px)" }}
             >
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -236,7 +271,6 @@ export function PhotoDetail({
                   </a>
                   <PhotoComments photoId={photo.id} />
                 </div>
-                <div className="shrink-0"><MapChip photo={photo} /></div>
               </div>
             </div>
           </div>
