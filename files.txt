@@ -1,0 +1,1311 @@
+"use client"
+
+import { useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
+import "leaflet/dist/leaflet.css"
+
+export interface AtlasPin {
+  slug: string
+  lat: number
+  lon: number
+  thumb: string
+  caption: string | null
+  place: string | null
+  flag: string
+}
+
+/**
+ * The Atlas — every geotagged photo plotted on one dark map. Click a pin to
+ * open that frame. This is the "between the fjell and the Caucasus" story made
+ * literal: pan from Norway to the Caucasus and watch the work spread across it.
+ *
+ * Leaflet is imported lazily inside the effect (it touches `window`, so it must
+ * never reach the server bundle) and only loads when this page renders.
+ */
+export function AtlasMap({ pins, className }: { pins: AtlasPin[]; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+  // Keep the latest pins/router reachable from the mount-only effect without
+  // re-initialising the whole map when they change.
+  const pinsRef = useRef(pins)
+  const routerRef = useRef(router)
+  useEffect(() => { pinsRef.current = pins }, [pins])
+  useEffect(() => { routerRef.current = router }, [router])
+
+  useEffect(() => {
+    let map: import("leaflet").Map | undefined
+    let cancelled = false
+
+    void (async () => {
+      const mod = await import("leaflet")
+      const L = mod.default ?? mod
+      if (cancelled || !ref.current) return
+
+      const current = pinsRef.current
+
+      map = L.map(ref.current, {
+        zoomControl: true,
+        attributionControl: false,
+        scrollWheelZoom: true,
+        worldCopyJump: true,
+        minZoom: 2,
+      })
+
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        subdomains: "abcd",
+        maxZoom: 19,
+        minZoom: 2,
+      }).addTo(map)
+
+      const markers: import("leaflet").Marker[] = []
+
+      for (const pin of current) {
+        const marker = L.marker([pin.lat, pin.lon], {
+          keyboard: true,
+          title: pin.caption ?? pin.place ?? "View frame",
+          icon: L.divIcon({
+            className: "",
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+            html:
+              '<div style="width:14px;height:14px;border-radius:9999px;background:#e3a857;' +
+              'box-shadow:0 0 0 4px rgba(227,168,87,0.2),0 0 12px rgba(227,168,87,0.8);' +
+              'cursor:pointer;transition:transform .18s ease"></div>',
+          }),
+        })
+
+        const label = [pin.flag, pin.place].filter(Boolean).join(" ")
+        marker.bindPopup(
+          `<a href="/p/${pin.slug}" data-slug="${pin.slug}" style="display:block;width:150px;text-decoration:none;color:inherit">
+             <img src="${pin.thumb}" alt="" style="width:150px;height:100px;object-fit:cover;border-radius:4px;display:block" loading="lazy" />
+             ${pin.caption ? `<div style="font-style:italic;font-size:12px;margin-top:6px;line-height:1.3;color:#e8e4dc">${escapeHtml(pin.caption)}</div>` : ""}
+             ${label ? `<div style="font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-top:4px;color:#9a948a">${escapeHtml(label)}</div>` : ""}
+           </a>`,
+          { closeButton: true, className: "atlas-popup", minWidth: 150, maxWidth: 150 },
+        )
+
+        marker.addTo(map!)
+        markers.push(marker)
+      }
+
+      // Intercept popup link clicks → client-side nav (no full reload).
+      map.on("popupopen", (e) => {
+        const node = (e.popup as import("leaflet").Popup).getElement()
+        const anchor = node?.querySelector<HTMLAnchorElement>("a[data-slug]")
+        anchor?.addEventListener("click", (ev) => {
+          ev.preventDefault()
+          routerRef.current.push(`/p/${anchor.dataset.slug}`)
+        })
+      })
+
+      // Frame the map around all pins; fall back to a Norway↔Caucasus view.
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers)
+        map.fitBounds(group.getBounds().pad(0.25), { maxZoom: 8 })
+      } else {
+        map.setView([55, 30], 3)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      map?.remove()
+    }
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={className ? `atlas-map ${className}` : "atlas-map"}
+      aria-label="Map of all photo locations"
+    />
+  )
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+  )
+}
+export function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="grid min-h-[40vh] place-items-center px-5">
+      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted">{label}</p>
+    </div>
+  )
+}
+import { formatExposure, formatAperture, formatFocal, formatBytes } from "@/lib/format"
+import type { PhotoDTO } from "@/types/photo"
+
+function Dot() { return <span className="text-muted">·</span> }
+
+export function ExposureStrip({ photo }: { photo: PhotoDTO }) {
+  const cyan = (s: string | null) => (s ? <span className="text-cyan">{s}</span> : null)
+  const parts: React.ReactNode[] = []
+  const push = (n: React.ReactNode) => n && parts.push(n)
+  push(photo.camera && <span>{photo.camera}</span>)
+  push(photo.lens && <span>{photo.lens}</span>)
+  push(formatFocal(photo.focal))
+  push(cyan(formatAperture(photo.fNumber)))
+  push(cyan(formatExposure(photo.exposure)))
+  push(photo.iso != null && cyan(`ISO ${photo.iso}`))
+  push(<span>{photo.width}×{photo.height}</span>)
+  push(<span>{formatBytes(photo.bytes)}</span>)
+
+  return (
+    <div className="font-mono text-[10px] uppercase leading-[1.9] tracking-[0.08em] text-muted-2">
+      {parts.map((p, i) => (
+        <span key={i}>{i > 0 && <> <Dot /> </>}{p}</span>
+      ))}
+    </div>
+  )
+}
+"use client"
+
+import Link from "next/link"
+import { useEffect, useRef, useState } from "react"
+import { cn } from "@/lib/cn"
+import type { PhotoDTO } from "@/types/photo"
+
+export function Filmstrip({
+  photos, activeId, onNavigate,
+}: {
+  photos: PhotoDTO[]
+  activeId: string
+  onNavigate?: (slug: string) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  // Scroll active thumb into view when frame changes
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>("[data-active='true']")?.scrollIntoView({ inline: "center", block: "nearest" })
+  }, [activeId])
+
+  // Track scroll edges to show/hide fade gradients
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 4)
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+    }
+
+    update()
+    el.addEventListener("scroll", update, { passive: true })
+    // Re-check on resize (e.g. window resize, panel open/close)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => { el.removeEventListener("scroll", update); ro.disconnect() }
+  }, [])
+
+  const thumbClass = (active: boolean) =>
+    cn("h-[52px] w-auto rounded-[2px]", active ? "outline outline-2 outline-cyan outline-offset-1" : "opacity-45 hover:opacity-80")
+
+  return (
+    <div className="relative border-t border-line bg-bg">
+      {/* left fade — visible when scrolled right */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-bg to-transparent transition-opacity duration-200 ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+      />
+      {/* right fade — visible when more content to the right */}
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bg to-transparent transition-opacity duration-200 ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+      />
+
+      <div ref={ref} className="flex gap-[5px] overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {photos.map((p) => {
+          const active = p.id === activeId
+          return onNavigate ? (
+            <button key={p.id} onClick={() => onNavigate(p.slug)} data-active={active} aria-label={p.caption ?? "View frame"}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
+            </button>
+          ) : (
+            <Link key={p.id} href={`/p/${p.slug}`} scroll={false} data-active={active}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={p.url.thumb} alt={p.caption ?? ""} loading="lazy" decoding="async" className={thumbClass(active)} />
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+import { site } from "@/config/site"
+
+export function Footer() {
+  return (
+    <footer className="mt-16 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-line px-5 py-6 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+      <a href={site.links.portfolio} className="hover:text-cyan">mataev.no</a>
+      <a href={site.links.github} target="_blank" rel="noopener noreferrer" className="hover:text-cyan">GitHub</a>
+      <a href={`mailto:${site.links.email}`} className="hover:text-cyan">{site.links.email}</a>
+    </footer>
+  )
+}
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { MosaicGrid } from "./MosaicGrid"
+import type { PhotoDTO } from "@/types/photo"
+import { PAGE_SIZE } from "@/config/site"
+
+export function GalleryFeed({
+  initialPhotos,
+  initialNextOffset,
+  tag,
+}: {
+  initialPhotos: PhotoDTO[]
+  initialNextOffset: number | null
+  tag?: string
+}) {
+  const [photos, setPhotos] = useState<PhotoDTO[]>(initialPhotos)
+  const [nextOffset, setNextOffset] = useState<number | null>(initialNextOffset)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const fetchingRef = useRef(false)
+  const retryRef = useRef<(() => void) | null>(null)
+
+  // Keep mutable refs in sync so the mount-only observer effect can read
+  // the latest values without being recreated on every page load.
+  const nextOffsetRef = useRef<number | null>(initialNextOffset)
+  const tagRef = useRef<string | undefined>(tag)
+
+  useEffect(() => { nextOffsetRef.current = nextOffset }, [nextOffset])
+  useEffect(() => { tagRef.current = tag }, [tag])
+
+  // Mount-only observer — reads mutable refs in the callback.
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    function doFetch() {
+      if (nextOffsetRef.current == null) return
+      if (fetchingRef.current) return
+
+      fetchingRef.current = true
+      setLoading(true)
+      setError(false)
+
+      const currentTag = tagRef.current
+      const offset = nextOffsetRef.current
+      const url = `/api/photos?limit=${PAGE_SIZE}&offset=${offset}${currentTag ? `&tag=${encodeURIComponent(currentTag)}` : ""}`
+
+      fetch(url)
+        .then((r) => r.json() as Promise<{ photos: PhotoDTO[]; nextOffset?: number | null }>)
+        .then((data) => {
+          setPhotos((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id))
+            const fresh = data.photos.filter((p) => !existingIds.has(p.id))
+            return [...prev, ...fresh]
+          })
+          const next = data.nextOffset ?? null
+          nextOffsetRef.current = next
+          setNextOffset(next)
+        })
+        .catch(() => {
+          setError(true)
+        })
+        .finally(() => {
+          setLoading(false)
+          fetchingRef.current = false
+        })
+    }
+
+    retryRef.current = doFetch
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) doFetch()
+      },
+      { rootMargin: "400px" },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <>
+      <MosaicGrid photos={photos} />
+      <div ref={sentinelRef} className="h-px" aria-hidden="true" />
+      {loading && (
+        <div className="flex justify-center py-8">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted animate-pulse">
+            Loading
+          </span>
+        </div>
+      )}
+      {error && !loading && (
+        <div className="flex justify-center py-8">
+          <button
+            onClick={() => retryRef.current?.()}
+            className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted transition-colors hover:text-amber"
+          >
+            Couldn&apos;t load more — tap to retry
+          </button>
+        </div>
+      )}
+    </>
+  )
+}
+"use client"
+
+import { useEffect, useRef } from "react"
+import "leaflet/dist/leaflet.css"
+
+/**
+ * A compact interactive locator map. Replaces the old MapTiler static image
+ * (static maps are a paid MapTiler feature). Uses Leaflet with CARTO's free,
+ * key-less dark raster tiles, so it matches the site's dark theme and needs
+ * no API key or build-time generation.
+ *
+ * Leaflet itself is imported lazily inside the effect so it never ends up in
+ * the server bundle (it touches `window`) and is fetched only when a detail
+ * view actually renders a map.
+ */
+export function LocationMap({
+  lat,
+  lon,
+  zoom = 9,
+  className,
+}: {
+  lat: number
+  lon: number
+  zoom?: number
+  className?: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let map: import("leaflet").Map | undefined
+    let cancelled = false
+
+    void (async () => {
+      const mod = await import("leaflet")
+      const L = mod.default ?? mod
+      if (cancelled || !ref.current) return
+
+      map = L.map(ref.current, {
+        center: [lat, lon],
+        zoom,
+        zoomControl: true,
+        attributionControl: false, // credited in the caption instead (tiny box)
+        scrollWheelZoom: false, // don't hijack page scroll
+        dragging: true,
+        doubleClickZoom: true,
+      })
+
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          subdomains: "abcd",
+          maxZoom: 19,
+          minZoom: 2,
+        }
+      ).addTo(map)
+
+      // Amber locator dot — a divIcon so we ship no marker image assets.
+      L.marker([lat, lon], {
+        keyboard: false,
+        icon: L.divIcon({
+          className: "",
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+          html: '<div style="width:14px;height:14px;border-radius:9999px;background:#e3a857;box-shadow:0 0 0 4px rgba(227,168,87,0.22),0 0 14px #e3a857"></div>',
+        }),
+      }).addTo(map)
+    })()
+
+    return () => {
+      cancelled = true
+      map?.remove()
+    }
+  }, [lat, lon, zoom])
+
+  return <div ref={ref} className={className} aria-label="Location map" />
+}
+type LogoProps = {
+  /** Render only the tower-M mark, without the MATAEV wordmark. */
+  iconOnly?: boolean;
+  className?: string;
+  title?: string;
+};
+
+/**
+ * Mataev gallery identity.
+ *
+ * A capital "M" built from two mirrored Vainakh (Chechen highland) watchtowers:
+ * tapering stone bodies, stepped pyramidal crowns, arrow-slit windows. The bold
+ * solid wedge between them is the center of the M and reads as a mountain valley.
+ * Chechen form, Nordic restraint. One mark, two readings.
+ *
+ * Pure vector, single fill colour (currentColor), symmetric by mirror transform.
+ */
+export default function Logo({ iconOnly = false, className, title = "Mataev" }: LogoProps) {
+  return (
+    <svg
+      viewBox={iconOnly ? "0 0 200 210" : "0 0 200 250"}
+      className={className}
+      fill="currentColor"
+      role="img"
+      aria-label={title}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>{title}</title>
+
+      {/* Ground line connecting both towers into one mark */}
+      <rect x="26" y="182" width="148" height="7" />
+
+      {/* Bold central wedge = center of the M / mountain valley */}
+      <path d="M58 50 L100 150 L142 50 L123 50 L100 118 L77 50 Z" />
+
+      {/* Left tower (outline + crown + windows). Right tower = mirror of this group. */}
+      <g id="tower">
+        {/* Body: tapering trapezoid, stroked as an outline */}
+        <path
+          d="M30 182 L42 48 L58 48 L66 182 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="6"
+          strokeLinejoin="round"
+        />
+        {/* Stepped pyramidal crown */}
+        <path d="M37 48 L61 48 L59 42 L39 42 Z" />
+        <path d="M40 41 L58 41 L56 35 L42 35 Z" />
+        <path d="M43 34 L55 34 L53 28 L45 28 Z" />
+        <path d="M46 27 L52 27 L49 21 Z" />
+        {/* Arrow-slit + square windows, on the tower centreline */}
+        <rect x="46.5" y="62" width="5" height="13" />
+        <rect x="45" y="95" width="8" height="9" />
+        <rect x="44" y="128" width="9" height="9" />
+        <rect x="43" y="158" width="10" height="9" />
+      </g>
+      {/* Mirror the tower across the vertical centre line (x = 100) */}
+      <use href="#tower" transform="matrix(-1,0,0,1,200,0)" />
+
+      {!iconOnly && (
+        <text
+          x="104"
+          y="232"
+          textAnchor="middle"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fontSize="30"
+          letterSpacing="8"
+          fill="currentColor"
+        >
+          MATAEV
+        </text>
+      )}
+    </svg>
+  );
+}
+"use client"
+
+import { flagEmoji } from "@/lib/format"
+import { LocationMap } from "./LocationMap"
+import type { PhotoDTO } from "@/types/photo"
+
+export function MapChip({ photo }: { photo: PhotoDTO }) {
+  // No coordinates — show the place name only (or nothing).
+  if (photo.lat == null || photo.lon == null) {
+    if (!photo.place) return null
+    return (
+      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">
+        {flagEmoji(photo.countryCode)} {photo.place}
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-[116px] shrink-0 text-right">
+      <div className="relative h-[116px] overflow-hidden rounded-[5px] border border-line-2 bg-[#0a1322]">
+        <LocationMap lat={photo.lat} lon={photo.lon} zoom={9} className="h-full w-full" />
+      </div>
+      <div className="mt-1.5 text-[11px] text-text">
+        {flagEmoji(photo.countryCode)} {photo.place}
+      </div>
+      <div className="mt-0.5 font-mono text-[8.5px] tracking-[0.06em] text-muted">
+        {photo.lat.toFixed(2)}°{photo.lat >= 0 ? "N" : "S"} {Math.abs(photo.lon).toFixed(2)}°{photo.lon >= 0 ? "E" : "W"}
+      </div>
+      <div className="mt-0.5 font-mono text-[7.5px] tracking-[0.04em] text-muted/70">
+        © OpenStreetMap · CARTO
+      </div>
+    </div>
+  )
+}
+"use client"
+
+import { useEffect, useRef } from "react"
+
+/**
+ * Full-bleed focus-trap container for the intercepted photo route. The visual
+ * surface (background, layout) is painted by PhotoDetail itself so the modal
+ * and the standalone page share one immersive presentation.
+ */
+export function ModalShell({ children }: { children: React.ReactNode }) {
+  const cardRef = useRef<HTMLDivElement>(null)
+  const returnFocusRef = useRef<Element | null>(null)
+
+  useEffect(() => {
+    returnFocusRef.current = document.activeElement
+    cardRef.current?.focus()
+
+    // Lock body scroll so iOS Safari doesn't shift fixed-position elements.
+    // Persist scrollY in sessionStorage so restoration survives Next.js's own
+    // scroll handling on router.back(), which fires after this cleanup runs.
+    const scrollY = window.scrollY
+    sessionStorage.setItem("gallery-scroll", String(scrollY))
+    document.body.style.position = "fixed"
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = "100%"
+    document.body.style.overflowY = "scroll"
+
+    return () => {
+      document.body.style.position = ""
+      document.body.style.top = ""
+      document.body.style.width = ""
+      document.body.style.overflowY = ""
+      // Defer past Next.js's own popstate scroll handler so we win the race.
+      requestAnimationFrame(() => {
+        const saved = sessionStorage.getItem("gallery-scroll")
+        if (saved) {
+          sessionStorage.removeItem("gallery-scroll")
+          window.scrollTo(0, parseInt(saved, 10))
+        }
+      })
+      ;(returnFocusRef.current as HTMLElement | null)?.focus()
+    }
+  }, [])
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+
+    const getFocusable = () =>
+      Array.from(
+        card.querySelectorAll<HTMLElement>(
+          'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute("disabled"))
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return
+      const focusable = getFocusable()
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    card.addEventListener("keydown", handleKeyDown)
+    return () => card.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  return (
+    <div
+      ref={cardRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo detail"
+      tabIndex={-1}
+      className="fixed inset-0 z-50 outline-none"
+    >
+      {children}
+    </div>
+  )
+}
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { computeColumns, columnsForWidth } from "@/lib/masonry"
+import { PhotoTile } from "./PhotoTile"
+import type { PhotoDTO } from "@/types/photo"
+
+export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(0)
+
+  useEffect(() => {
+    if (!ref.current) return
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width))
+    ro.observe(ref.current)
+    return () => ro.disconnect()
+  }, [])
+
+  const columns = columnsForWidth(w)
+  const gap = w < 640 ? 8 : 14
+  const cols =
+    w > 0
+      ? computeColumns(
+          photos.map((p) => ({ id: p.id, aspect: p.aspect })),
+          { containerWidth: w, columns, gap },
+        )
+      : []
+  const byId = new Map(photos.map((p, i) => [p.id, { p, i }]))
+
+  return (
+    <div ref={ref} className="px-4 sm:px-5">
+      <div className="flex items-start" style={{ gap }}>
+        {cols.map((col, ci) => (
+          <div key={ci} className="flex min-w-0 flex-1 flex-col" style={{ gap }}>
+            {col.boxes.map((b) => {
+              const entry = byId.get(b.id)!
+              return (
+                <PhotoTile
+                  key={b.id}
+                  photo={entry.p}
+                  width={b.width}
+                  index={entry.i}
+                  priority={entry.i < columns}
+                />
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+"use client"
+
+import { useEffect } from "react"
+
+export function NoScroll() {
+  useEffect(() => {
+    const html = document.documentElement
+    const prev = html.style.overflow
+    html.style.overflow = "hidden"
+    return () => { html.style.overflow = prev }
+  }, [])
+  return null
+}
+"use client"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+
+interface Comment {
+  id: string
+  author: string
+  body: string
+  createdAt: number
+}
+
+export function PhotoComments({ photoId }: { photoId: string }) {
+  const [comments, setComments] = useState<Comment[]>([])
+  const [open, setOpen] = useState(false)
+  const [author, setAuthor] = useState("")
+  const [body, setBody] = useState("")
+  const [website, setWebsite] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  const load = useCallback(async () => {
+    const res = await fetch(`/api/photos/${photoId}/comments`)
+    if (!res.ok) return
+    const data = (await res.json()) as { comments: Comment[] }
+    setComments(data.comments)
+  }, [photoId])
+
+  useEffect(() => { void load() }, [load])
+
+  // Focus name field when form opens
+  useEffect(() => {
+    if (open) nameRef.current?.focus()
+  }, [open])
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    const res = await fetch(`/api/photos/${photoId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ author, body, website }),
+    })
+    setBusy(false)
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      setError(data.error ?? "Could not post comment")
+      return
+    }
+    const data = (await res.json()) as { comment: Comment }
+    setComments((prev) => [...prev, data.comment])
+    setBody("")
+    setOpen(false)
+  }
+
+  return (
+    <section className="mt-6 border-t border-line pt-5">
+      <h3 className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-2">
+        Comments{comments.length > 0 && <span className="ml-2 text-muted">{comments.length}</span>}
+      </h3>
+
+      {comments.length > 0 && (
+        <ul className="mb-4 space-y-3">
+          {comments.map((c) => (
+            <li key={c.id} className="text-sm">
+              <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                {c.author}
+                <span className="mx-2 text-line-2">·</span>
+                {new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+              </div>
+              <p className="mt-1 leading-relaxed text-text">{c.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted transition-colors hover:text-amber"
+        >
+          + Leave a note
+        </button>
+      ) : (
+        <form onSubmit={submit} className="space-y-2">
+          <input
+            ref={nameRef}
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="Your name"
+            maxLength={40}
+            required
+            className="w-full rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Leave a note…"
+            maxLength={500}
+            required
+            rows={3}
+            className="w-full resize-y rounded border border-line-2 bg-bg px-2 py-1.5 text-sm text-text outline-none focus:border-amber/50"
+          />
+          {/* Honeypot — hidden from humans */}
+          <input
+            type="text"
+            name="website"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden
+            className="absolute -left-[9999px] h-0 w-0 opacity-0"
+          />
+          {error && <p className="font-mono text-[10px] text-amber">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded border border-amber/40 bg-amber/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber disabled:opacity-50"
+            >
+              {busy ? "Posting…" : "Post"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null) }}
+              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-text"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  )
+}
+"use client"
+
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState } from "react"
+import { ExposureStrip } from "./ExposureStrip"
+import { Filmstrip } from "./Filmstrip"
+import { PhotoComments } from "./PhotoComments"
+import Logo from "./Logo"
+import { ShortcutsOverlay } from "./ShortcutsOverlay"
+import type { PhotoDTO } from "@/types/photo"
+
+function Icon({ d, className }: { d: string; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+      <path d={d} />
+    </svg>
+  )
+}
+
+export function PhotoDetail({
+  photo, neighbours, index, total, asModal,
+}: {
+  photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; asModal: boolean
+}) {
+  const router = useRouter()
+  const [info, setInfo] = useState(false)
+  const [transitioning, setTransitioning] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
+  const [indicator, setIndicator] = useState<"play" | "pause" | null>(null)
+  
+  const [seenId, setSeenId] = useState(photo.id)
+  if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
+
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [canPlay, setCanPlay] = useState(false)
+  const isVideo = photo.mediaType === "video"
+  
+  const prev = neighbours[index - 1]
+  const next = neighbours[index + 1]
+
+  const close = () => {
+    if (asModal) router.back()
+    else router.push("/")
+  }
+
+  const goto = (slug: string) => {
+    setTransitioning(true)
+    if (asModal) router.replace(`/p/${slug}`)
+    else router.push(`/p/${slug}`)
+  }
+
+  const togglePlayback = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) {
+      v.play().catch(() => {})
+      setIndicator("play")
+    } else {
+      v.pause()
+      setIndicator("pause")
+    }
+    setTimeout(() => setIndicator(null), 500)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")
+      if (typing && e.key !== "Escape") return
+      if (e.key === "Escape") { if (info) setInfo(false); else close() }
+      if (e.key === "ArrowLeft" && prev) goto(prev.slug)
+      if (e.key === "ArrowRight" && next) goto(next.slug)
+      if (e.key === "i" || e.key === "I") setInfo((v) => !v)
+      if (e.key === "m" || e.key === "M") setIsMuted((v) => !v)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [router, asModal, prev, next, info])
+
+  useEffect(() => {
+    if (!isVideo || !canPlay) return
+    const t = setTimeout(() => { videoRef.current?.play().catch(() => {}) }, 1000)
+    return () => clearTimeout(t)
+  }, [isVideo, canPlay])
+
+  useEffect(() => {
+    if (!isVideo) return
+    videoRef.current?.pause()
+    setCanPlay(false)
+  }, [photo.id, isVideo])
+
+  const date = photo.takenAt
+    ? new Date(photo.takenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
+    : null
+
+  const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
+
+  return (
+    <div className="flex h-full min-h-dvh w-full flex-col overflow-hidden bg-bg">
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute inset-x-0 top-0 z-50 h-[2px] bg-amber origin-left transition-transform duration-300 ease-out ${transitioning ? "scale-x-[0.85]" : "scale-x-0"}`}
+        style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
+      />
+
+      {/* Header */}
+      <div className="relative z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber">
+          Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
+          <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+        </span>
+        {!info && (
+          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
+            <span className="text-muted-2">← →</span> previous / next
+            <span className="mx-2 text-line-2">·</span>
+            <span className="text-muted-2">I</span> details
+          </p>
+        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {isVideo && (
+            <button onClick={() => setIsMuted(!isMuted)} className="mr-2 inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-amber">
+              {isMuted ? <Icon d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" className="h-[18px] w-[18px]" /> : <Icon d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" className="h-[18px] w-[18px]" />}
+            </button>
+          )}
+          <button
+            onClick={() => setInfo((v) => !v)}
+            className={`mr-2 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
+          >
+            <Icon d="M12 16v-5M12 8h.01" className="h-3.5 w-3.5" /> Info
+          </button>
+          <button onClick={close} className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
+            <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Stage */}
+      <div className="relative min-h-0 flex-1">
+        <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
+
+        <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
+          {isVideo ? (
+            <video
+              ref={videoRef}
+              src={photo.url.original}
+              loop
+              muted={isMuted}
+              playsInline
+              onCanPlay={() => setCanPlay(true)}
+              onLoad={() => setTransitioning(false)}
+              onClick={togglePlayback}
+              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+            />
+          ) : (
+            <img
+              src={photo.url.large}
+              alt={photo.caption ?? `Frame ${index + 1}`}
+              width={photo.width}
+              height={photo.height}
+              onClick={() => setInfo((v) => !v)}
+              onLoad={() => setTransitioning(false)}
+              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+            />
+          )}
+
+          {indicator && (
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex h-20 w-20 items-center justify-center rounded-full bg-bg/40 backdrop-blur-sm animate-indicator">
+               {indicator === "play" ? (
+                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-amber translate-x-1"><path d="M8 5v14l11-7z"/></svg>
+               ) : (
+                 <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10 text-amber"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+               )}
+            </div>
+          )}
+        </div>
+
+        {/* Branding */}
+        <div className={`pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1.5 transition-opacity duration-300 sm:bottom-5 sm:right-6 ${info ? "opacity-0" : "opacity-100"}`}>
+          <Logo iconOnly className="h-5 w-auto text-amber/55 sm:h-6" title="Mataev" />
+          <span className="font-mono text-[8.5px] uppercase tracking-[0.28em] text-muted/70 mix-blend-screen sm:text-[9px]">Mataev</span>
+        </div>
+
+        {/* Navigation Arrows */}
+        <div className="pointer-events-none absolute inset-y-0 left-2 right-2 z-20 flex items-center justify-between sm:left-4 sm:right-4">
+          {prev ? <button onClick={() => goto(prev.slug)} className={navBtn}><Icon d="M15 18l-6-6 6-6" className="h-5 w-5" /></button> : <span className={navBtn} />}
+          {next ? <button onClick={() => goto(next.slug)} className={navBtn}><Icon d="M9 18l6-6-6-6" className="h-5 w-5" /></button> : <span className={navBtn} />}
+        </div>
+      </div>
+
+      {/* Info Panel */}
+      <div aria-hidden={!info} className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${info ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <div className="border-t border-line-2 bg-bg-2/95 backdrop-blur-md">
+            <div className="mx-auto max-w-[900px] overflow-y-auto px-5 pb-8 pt-5 sm:px-6" style={{ maxHeight: "min(58vh, 420px)" }}>
+              <div className="flex flex-col gap-5">
+                {photo.caption && <p className="font-serif text-[22px] italic leading-[1.35] text-text">{photo.caption}</p>}
+                <ExposureStrip photo={photo} />
+                {date && <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">{date}</div>}
+                <PhotoComments photoId={photo.id} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Filmstrip photos={neighbours} activeId={photo.id} onNavigate={asModal ? goto : undefined} />
+      <ShortcutsOverlay />
+    </div>
+  )
+}"use client"
+
+import Link from "next/link"
+import { useMemo, useState } from "react"
+import { thumbhashToUrl } from "@/lib/thumbhash"
+import type { PhotoDTO } from "@/types/photo"
+
+function Tick({ pos }: { pos: string }) {
+  return <span aria-hidden className={`pointer-events-none absolute h-2 w-2 border-amber/0 transition-colors duration-300 group-hover:border-amber/70 ${pos}`} />
+}
+
+export function PhotoTile({
+  photo, width, index, priority,
+}: { photo: PhotoDTO; width: number; index: number; priority?: boolean }) {
+  const delay = `${Math.min(index, 24) * 28}ms`
+  const [loaded, setLoaded] = useState(false)
+  const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
+  const colW = Math.round(width)
+  const frame = String(index + 1).padStart(3, "0")
+
+  // Optimized srcSet calculation ensures we serve the right resolution for the grid column
+  const srcSet = useMemo(() => {
+    const longEdge = Math.max(photo.width, photo.height) || 1
+    const thumbW = Math.max(1, Math.round(photo.width * Math.min(1, 500 / longEdge)))
+    const largeW = Math.max(1, Math.round(photo.width * Math.min(1, 1600 / longEdge)))
+    if (thumbW === largeW) return `${photo.url.thumb} ${thumbW}w`
+    return `${photo.url.thumb} ${thumbW}w, ${photo.url.large} ${largeW}w`
+  }, [photo.width, photo.height, photo.url.thumb, photo.url.large])
+
+  return (
+    <Link
+      href={`/p/${photo.slug}`}
+      scroll={false}
+      className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)]"
+      style={{ 
+        aspectRatio: photo.aspect > 0 ? photo.aspect : 1, 
+        animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${delay} both` 
+      }}
+    >
+      {/* Thumbhash placeholder - shown until the main image loads */}
+      {placeholder && !loaded && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={placeholder} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px]" />
+      )}
+
+      {/* Main content image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.url.thumb}
+        srcSet={srcSet}
+        sizes={`${colW}px`}
+        alt={photo.caption ?? `Frame ${frame}`}
+        width={photo.width}
+        height={photo.height}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : undefined}
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        className={`relative h-full w-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] ${loaded ? "opacity-100" : "opacity-0"}`}
+      />
+
+      {/* Archival frame marker */}
+      <span className="pointer-events-none absolute left-2 top-2 font-mono text-[9px] tracking-[0.14em] text-amber/85 mix-blend-screen drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        F{frame}
+      </span>
+
+      {/* Video indicator badge */}
+      {photo.mediaType === "video" && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-bg/50 backdrop-blur-sm ring-1 ring-amber/40">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 translate-x-0.5 text-amber/90" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* Registration corners */}
+      <Tick pos="left-1 top-1 border-l border-t" />
+      <Tick pos="right-1 top-1 border-r border-t" />
+      <Tick pos="left-1 bottom-1 border-l border-b" />
+      <Tick pos="right-1 bottom-1 border-r border-b" />
+
+      {/* Caption overlay - Location/Flag logic removed for cleaner UI */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/85 via-[#0a0908]/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-1 px-3 pb-3 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        {photo.caption && (
+          <p className="mb-0.5 line-clamp-1 font-serif text-[15px] italic leading-tight text-text">
+            {photo.caption}
+          </p>
+        )}
+      </div>
+
+      {/* Animated amber accent line on hover */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[2px] origin-left scale-x-0 bg-amber transition-transform duration-300 ease-out group-hover:scale-x-100" />
+    </Link>
+  )
+}"use client"
+
+import { useEffect, useState } from "react"
+
+const SHORTCUTS = [
+  { key: "← / →", desc: "Navigate" },
+  { key: "I", desc: "Details" },
+  { key: "Esc", desc: "Close / dismiss" },
+  { key: "?", desc: "Shortcuts" },
+]
+
+export function ShortcutsOverlay() {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Open on ? (Shift+/) — only when overlay itself is not already handling the key
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
+        setOpen((prev) => !prev)
+        return
+      }
+      if (e.key === "Escape" && open) {
+        e.stopPropagation()
+        setOpen(false)
+      }
+    }
+    window.addEventListener("keydown", onKey, { capture: true })
+    return () => window.removeEventListener("keydown", onKey, { capture: true })
+  }, [open])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={() => setOpen(false)}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Keyboard shortcuts"
+    >
+      <div
+        className="w-[280px] rounded-[6px] border border-line-2 bg-bg-2 p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-4 font-mono text-[10px] uppercase tracking-[0.3em] text-muted">
+          Shortcuts
+        </h2>
+        <ul className="space-y-3">
+          {SHORTCUTS.map(({ key, desc }) => (
+            <li key={key} className="flex items-center justify-between gap-4">
+              <kbd className="rounded-[3px] border border-line-2 bg-bg px-2 py-0.5 font-mono text-[11px] text-cyan">
+                {key}
+              </kbd>
+              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-2">
+                {desc}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-5 font-mono text-[9px] uppercase tracking-[0.2em] text-muted">
+          Press Esc or ? to dismiss
+        </p>
+      </div>
+    </div>
+  )
+}
+"use client"
+
+import { useTransition, useState } from "react"
+import { useRouter } from "next/navigation"
+import { cn } from "@/lib/cn"
+import Link from "next/link"
+import type { TagCount } from "@/types/photo"
+
+function Chip({
+  href, active, label, count, onClick, loading,
+}: {
+  href: string; active: boolean; label: string; count?: number
+  onClick: () => void; loading: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "group inline-flex shrink-0 items-center gap-1.5 border-b-2 pb-1.5 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors duration-200",
+        active ? "border-amber text-text" : "border-transparent text-muted-2 hover:text-text",
+        loading && "opacity-60",
+      )}
+    >
+      <span className={cn("transition-colors", active ? "text-amber" : "text-muted group-hover:text-amber")}>
+        {loading ? (
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
+        ) : active ? "▸" : ""}
+      </span>
+      <span>{label}</span>
+      {count != null && (
+        <span className={cn("text-[9px] tabular-nums", active ? "text-amber" : "text-muted")}>{count}</span>
+      )}
+    </button>
+  )
+}
+
+export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  function navigate(href: string) {
+    setPendingHref(href)
+    startTransition(() => {
+      router.push(href)
+    })
+  }
+
+  // Clear pending once transition resolves
+  if (!isPending && pendingHref !== null) {
+    setPendingHref(null)
+  }
+
+  return (
+    <nav aria-label="Filter by tag" className="sticky top-0 z-20 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md">
+      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-4 pt-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <Chip
+          href="/"
+          active={!active}
+          label="All"
+          loading={pendingHref === "/"}
+          onClick={() => navigate("/")}
+        />
+        {tags.map((t) => {
+          const href = `/t/${t.name}`
+          return (
+            <Chip
+              key={t.name}
+              href={href}
+              active={active === t.name}
+              label={t.name}
+              count={t.count}
+              loading={pendingHref === href}
+              onClick={() => navigate(href)}
+            />
+          )
+        })}
+      </div>
+      {/* Atlas — pinned right so it never scrolls with the tag list */}
+      <Link
+        href="/atlas"
+        className="group flex shrink-0 items-center gap-1.5 border-l border-line px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-2 transition-colors hover:text-text sm:px-6"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-muted transition-colors group-hover:text-amber" aria-hidden>
+          <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" />
+        </svg>
+        Atlas
+      </Link>
+    </nav>
+  )
+}
+import Link from "next/link"
+import { site } from "@/config/site"
+import Logo from "@/components/Logo"
+
+export function Wordmark() {
+  return (
+    <header className="flex items-center justify-between px-4 pb-3 pt-5 sm:px-6">
+      <Link href="/" className="group flex items-center gap-2.5">
+        <Logo iconOnly className="h-5 w-auto text-amber transition-colors group-hover:text-text" />
+        <span className="font-mono text-sm font-medium uppercase tracking-[0.38em] text-text transition-colors group-hover:text-amber">
+          {site.name}
+        </span>
+      </Link>
+    </header>
+  )
+}
