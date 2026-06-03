@@ -1,12 +1,15 @@
 import type { PhotoRow, PhotoDTO } from "@/types/photo"
 import { formatCamera } from "./format"
 
-export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoDTO {
-  const url = (key: string) => `${cdnBase}/${key}`
+export function rowToDTO(row: PhotoRow, tags: string[]): PhotoDTO {
   return {
     id: row.id,
     slug: row.slug,
-    url: { thumb: url(row.r2_thumb), large: url(row.r2_large), original: url(row.r2_original) },
+    url: {
+      thumb: `/img/${row.slug}/thumb`,
+      large: `/img/${row.slug}`,
+      original: `/img/${row.slug}/full`,
+    },
     width: row.width, height: row.height, aspect: row.aspect,
     thumbhash: row.thumbhash,
     caption: row.caption, takenAt: row.taken_at,

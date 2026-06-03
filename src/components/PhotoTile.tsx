@@ -33,7 +33,7 @@ export function PhotoTile({
     <Link
       href={`/p/${photo.slug}`}
       scroll={false}
-      className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)]"
+      className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)] active:scale-[0.985] active:duration-75"
       style={{
         aspectRatio: photo.aspect > 0 ? photo.aspect : 1,
         animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${delay} both`,

@@ -5,11 +5,10 @@ import { rowToDTO } from "./serialize"
 
 export async function buildPhotosResponse(
   db: SqlDb,
-  cdn: string,
   opts: { tag?: string; limit?: number; offset?: number },
 ): Promise<PhotosResponse> {
   const [list, tags] = await Promise.all([listPhotos(db, opts), listTagCounts(db)])
-  const photos = list.map(({ row, tags }) => rowToDTO(row, tags, cdn))
+  const photos = list.map(({ row, tags }) => rowToDTO(row, tags))
   const nextOffset =
     opts.limit != null
       ? photos.length === opts.limit

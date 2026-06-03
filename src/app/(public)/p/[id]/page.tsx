@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import type { Metadata } from "next"
 import { db } from "@/lib/db"
-import { cdnBase } from "@/lib/env"
 import { getDetail } from "@/lib/detail"
 import { PhotoDetail } from "@/components/PhotoDetail"
 
@@ -10,7 +9,7 @@ export const dynamic = "force-dynamic"
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   try {
     const { id } = await params
-    const data = await getDetail(await db(), await cdnBase(), id)
+    const data = await getDetail(await db(), id)
     if (!data) {
       return { title: "Not Found — MATAEV" }
     }
@@ -40,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getDetail(await db(), await cdnBase(), id)
+  const data = await getDetail(await db(), id)
   if (!data) notFound()
   return (
     <div className="fixed inset-0 z-50">

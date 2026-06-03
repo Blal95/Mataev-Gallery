@@ -9,6 +9,7 @@ import { PhotoComments } from "./PhotoComments"
 import Logo from "./Logo"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
 import { flagEmoji, formatDuration, formatBytes } from "@/lib/format"
+import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
 
 function Icon({ d, className }: { d: string; className?: string }) {
@@ -40,9 +41,11 @@ export function PhotoDetail({
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [canPlay, setCanPlay] = useState(false)
+  const [largeLoaded, setLargeLoaded] = useState(false)
   const isVideo = photo.mediaType === "video"
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
+  const placeholder = thumbhashToUrl(photo.thumbhash)
 
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
@@ -109,6 +112,21 @@ export function PhotoDetail({
     const t = setTimeout(() => { videoRef.current?.play().catch(() => {}) }, 1000)
     return () => clearTimeout(t)
   }, [isVideo, canPlay])
+
+  // Reset large-image loaded state when photo changes so blur placeholder shows
+  useEffect(() => {
+    setLargeLoaded(false)
+  }, [photo.id])
+
+  // Preload neighbor large images so prev/next nav feels instant.
+  // Plain Image() triggers browser cache without inserting into DOM.
+  useEffect(() => {
+    const urls: string[] = []
+    if (prev && prev.mediaType !== "video") urls.push(prev.url.large)
+    if (next && next.mediaType !== "video") urls.push(next.url.large)
+    const imgs = urls.map((u) => { const i = new Image(); i.src = u; return i })
+    return () => { imgs.forEach((i) => { i.src = "" }) }
+  }, [prev, next])
 
   // Pause + reset when navigating away
   useEffect(() => {
@@ -198,6 +216,17 @@ export function PhotoDetail({
         <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
 
         <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
+          {/* Thumbhash blur placeholder — shown until large media loads */}
+          {placeholder && !isVideo && !largeLoaded && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={placeholder}
+              alt=""
+              aria-hidden
+              style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
+              className="absolute max-h-full max-w-full scale-[1.02] object-contain opacity-90 blur-[14px] transition-opacity duration-300"
+            />
+          )}
           {isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
@@ -223,11 +252,12 @@ export function PhotoDetail({
               width={photo.width}
               height={photo.height}
               onClick={() => setInfo((v) => !v)}
-              onLoad={() => setTransitioning(false)}
-              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
+              className={`pointer-events-auto relative max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${(transitioning || !largeLoaded) ? "opacity-0" : "opacity-100"}`}
             />
           )}
         </div>
+
 
         {/* Branding seal */}
         <div className={`pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1.5 transition-opacity duration-300 sm:bottom-5 sm:right-6 ${info ? "opacity-0" : "opacity-100"}`}>
@@ -363,3 +393,4 @@ export function PhotoDetail({
     </div>
   )
 }
+  

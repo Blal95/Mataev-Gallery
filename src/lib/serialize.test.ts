@@ -16,9 +16,11 @@ const row: PhotoRow = {
 }
 
 describe("rowToDTO", () => {
-  it("builds cdn urls and camelCase fields", () => {
-    const dto = rowToDTO(row, ["norway", "lofoten"], "https://cdn.x")
-    expect(dto.url.large).toBe("https://cdn.x/photos/01J/large.webp")
+  it("emits slug-based image URLs and camelCase fields", () => {
+    const dto = rowToDTO(row, ["norway", "lofoten"])
+    expect(dto.url.thumb).toBe("/img/blue-hour/thumb")
+    expect(dto.url.large).toBe("/img/blue-hour")
+    expect(dto.url.original).toBe("/img/blue-hour/full")
     expect(dto.camera).toBe("SONY ILCE-7M4")
     expect(dto.fNumber).toBe(2.8)
     expect(dto.countryCode).toBe("NO")
@@ -26,13 +28,13 @@ describe("rowToDTO", () => {
   })
 
   it("sets mediaType to 'photo' and duration null by default", () => {
-    const dto = rowToDTO({ ...row, media_type: "photo", duration: null }, [], "https://cdn.x")
+    const dto = rowToDTO({ ...row, media_type: "photo", duration: null }, [])
     expect(dto.mediaType).toBe("photo")
     expect(dto.duration).toBeNull()
   })
 
   it("maps video row to mediaType video and duration", () => {
-    const dto = rowToDTO({ ...row, media_type: "video", duration: 12.4 }, [], "https://cdn.x")
+    const dto = rowToDTO({ ...row, media_type: "video", duration: 12.4 }, [])
     expect(dto.mediaType).toBe("video")
     expect(dto.duration).toBe(12.4)
   })

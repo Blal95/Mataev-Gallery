@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { db } from "@/lib/db"
-import { cdnBase } from "@/lib/env"
 import { listGeoPhotos } from "@/lib/photos"
 import { flagEmoji } from "@/lib/format"
 import { AtlasMap, type AtlasPin } from "@/components/AtlasMap"
@@ -23,13 +22,12 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
     : undefined
   const initialZoom = sp.z ? parseInt(sp.z) : 11
 
-  const cdn = await cdnBase()
   const geo = await listGeoPhotos(await db())
   const pins: AtlasPin[] = geo.map((p) => ({
     slug: p.slug,
     lat: p.lat,
     lon: p.lon,
-    thumb: `${cdn}/${p.thumb}`,
+    thumb: `/img/${p.slug}/thumb`,
     caption: p.caption,
     place: p.place,
     flag: flagEmoji(p.countryCode),

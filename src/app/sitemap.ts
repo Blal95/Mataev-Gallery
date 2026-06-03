@@ -7,12 +7,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Dynamic imports so a missing Cloudflare binding at build time
     // doesn't break the module graph — caught by the outer try/catch.
     const { db } = await import("@/lib/db")
-    const { cdnBase } = await import("@/lib/env")
     const { listPhotos, listTagCounts } = await import("@/lib/photos")
     const { rowToDTO } = await import("@/lib/serialize")
 
     const dbInst = await db()
-    const cdn = await cdnBase()
 
     const [photosWithTags, tagCounts] = await Promise.all([
       listPhotos(dbInst, {}),
@@ -20,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ])
 
     const photoUrls: MetadataRoute.Sitemap = photosWithTags.map(({ row, tags }) => {
-      const dto = rowToDTO(row, tags, cdn)
+      const dto = rowToDTO(row, tags)
       return {
         url: `${BASE}/p/${dto.slug}`,
         lastModified: row.created_at ? new Date(row.created_at * 1000) : undefined,
