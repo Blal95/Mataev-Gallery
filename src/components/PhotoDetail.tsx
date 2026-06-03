@@ -30,9 +30,11 @@ export function PhotoDetail({
   // Clear transition flag when navigating to a different frame.
   const [seenId, setSeenId] = useState(photo.id)
   if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const [canPlay, setCanPlay] = useState(false)
   const isVideo = photo.mediaType === "video"
+  
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
 
@@ -88,7 +90,7 @@ export function PhotoDetail({
     videoRef.current?.pause()
     setCanPlay(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photo.id])
+  }, [photo.id, isVideo])
 
   const date = photo.takenAt
     ? new Date(photo.takenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
@@ -148,7 +150,7 @@ export function PhotoDetail({
               muted
               playsInline
               onCanPlay={() => setCanPlay(true)}
-              onLoadedData={() => setTransitioning(false)}
+              onLoad={() => setTransitioning(false)}
               onClick={() => {
                 const v = videoRef.current
                 if (!v) return
