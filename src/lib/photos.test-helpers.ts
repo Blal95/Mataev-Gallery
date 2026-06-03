@@ -8,6 +8,8 @@ export function h(id: string, overrides: Partial<PhotoRow> = {}): PhotoRow {
     exposure_time: null, iso: null, gps_lat: null, gps_lon: null, gps_alt: null,
     place: null, country: null, country_code: null, thumbhash: null,
     r2_original: `photos/${id}/original.jpg`, r2_large: `photos/${id}/large.webp`,
-    r2_thumb: `photos/${id}/thumb.webp`, published: 1, sort_index: null, ...overrides,
+    r2_thumb: `photos/${id}/thumb.webp`, published: 1, sort_index: null,
+    media_type: "photo", duration: null,
+    ...overrides,
   }
 }

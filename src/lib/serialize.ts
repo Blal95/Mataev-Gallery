@@ -17,5 +17,7 @@ export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoD
     bytes: row.bytes, format: row.format,
     published: row.published === 1,
     tags,
+    mediaType: row.media_type === 'video' ? 'video' : 'photo',
+    duration: row.duration,
   }
 }

@@ -7,7 +7,7 @@ const COLS =
   "id,slug,caption,taken_at,created_at,width,height,aspect,bytes,format,color_space," +
   "camera_make,camera_model,lens_model,focal_length,f_number,exposure_time,iso," +
   "gps_lat,gps_lon,gps_alt,place,country,country_code,thumbhash," +
-  "r2_original,r2_large,r2_thumb,published,sort_index"
+  "r2_original,r2_large,r2_thumb,published,sort_index,media_type,duration"
 
 async function tagsFor(db: SqlDb, ids: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>()
@@ -38,7 +38,7 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
       row.bytes, row.format, row.color_space, row.camera_make, row.camera_model, row.lens_model,
       row.focal_length, row.f_number, row.exposure_time, row.iso, row.gps_lat, row.gps_lon, row.gps_alt,
       row.place, row.country, row.country_code, row.thumbhash, row.r2_original, row.r2_large, row.r2_thumb,
-      row.published, row.sort_index,
+      row.published, row.sort_index, row.media_type, row.duration,
     )
     .run()
   await upsertTags(db, row.id, tags)

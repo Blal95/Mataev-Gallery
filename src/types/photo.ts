@@ -10,6 +10,8 @@ export interface PhotoRow {
   thumbhash: string | null
   r2_original: string; r2_large: string; r2_thumb: string
   published: number; sort_index: number | null
+  media_type: string        // 'photo' | 'video'
+  duration: number | null   // seconds; null for photos
 }
 
 export interface PhotoDTO {
@@ -25,6 +27,8 @@ export interface PhotoDTO {
   bytes: number; format: string
   published: boolean
   tags: string[]
+  mediaType: 'photo' | 'video'
+  duration: number | null
 }
 
 export interface TagCount { name: string; count: number }

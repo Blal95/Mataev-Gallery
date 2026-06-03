@@ -12,6 +12,7 @@ const row: PhotoRow = {
   thumbhash: "abc", r2_original: "photos/01J/original.jpg",
   r2_large: "photos/01J/large.webp", r2_thumb: "photos/01J/thumb.webp",
   published: 1, sort_index: null,
+  media_type: "photo", duration: null,
 }
 
 describe("rowToDTO", () => {
@@ -22,5 +23,17 @@ describe("rowToDTO", () => {
     expect(dto.fNumber).toBe(2.8)
     expect(dto.countryCode).toBe("NO")
     expect(dto.tags).toEqual(["norway", "lofoten"])
+  })
+
+  it("sets mediaType to 'photo' and duration null by default", () => {
+    const dto = rowToDTO({ ...row, media_type: "photo", duration: null }, [], "https://cdn.x")
+    expect(dto.mediaType).toBe("photo")
+    expect(dto.duration).toBeNull()
+  })
+
+  it("maps video row to mediaType video and duration", () => {
+    const dto = rowToDTO({ ...row, media_type: "video", duration: 12.4 }, [], "https://cdn.x")
+    expect(dto.mediaType).toBe("video")
+    expect(dto.duration).toBe(12.4)
   })
 })
