@@ -11,12 +11,6 @@ export function Wordmark() {
           {site.name}
         </span>
       </Link>
-      <div className="flex items-center gap-2 font-mono text-[9.5px] uppercase tracking-[0.28em] text-muted">
-        <span className="text-amber/70">▚</span>
-        <span>ARCHIVE</span>
-        <span className="text-line-2">/</span>
-        <span>NO</span>
-      </div>
     </header>
   )
 }

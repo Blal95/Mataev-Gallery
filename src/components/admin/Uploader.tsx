@@ -19,13 +19,26 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
 
   async function onFiles(files: FileList | null) {
     if (!files) return
+    let nextIdx = itemsRef.current.length
     for (const raw of Array.from(files)) {
+      const exif = await extractExif(raw)
       const file = await toJpegIfHeic(raw)
-      const exif = await extractExif(file)
+      const idx = nextIdx++
       setItems((prev) => [...prev, {
         file, preview: URL.createObjectURL(file), caption: "", tags: "",
         exif, place: "", status: "ready",
       }])
+      if (exif.lat != null && exif.lon != null) {
+        fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
+          .then((r) => r.json())
+          .then((data: { result?: { place?: string | null; country?: string | null } }) => {
+            const r = data.result
+            if (!r) return
+            const label = [r.place, r.country].filter(Boolean).join(", ")
+            if (label) setItems((prev) => prev.map((it, i) => i === idx ? { ...it, place: label } : it))
+          })
+          .catch(() => {})
+      }
     }
   }
 
@@ -92,7 +105,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
             <div className="min-w-0 flex-1 space-y-2">
               <input value={it.caption} onChange={(e) => patch(i, { caption: e.target.value })} placeholder="Caption" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-sm text-text outline-none focus:border-cyan/50" />
               <input value={it.tags} onChange={(e) => patch(i, { tags: e.target.value })} placeholder="#tags #separated" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 font-mono text-xs text-text outline-none focus:border-cyan/50" />
-              <input value={it.place} onChange={(e) => patch(i, { place: e.target.value })} placeholder={it.exif.lat != null ? "Location (auto from GPS)" : "Location (manual, optional)"} className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-xs text-text outline-none focus:border-cyan/50" />
+              <input value={it.place} onChange={(e) => patch(i, { place: e.target.value })} placeholder="Location" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-xs text-text outline-none focus:border-cyan/50" />
               <div className="flex items-center gap-3">
                 <button onClick={() => upload(i)} disabled={it.status === "uploading" || it.status === "done"} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">
                   {it.status === "done" ? "Posted ✓" : it.status === "uploading" ? "Posting…" : "Post"}

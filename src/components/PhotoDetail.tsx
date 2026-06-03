@@ -27,9 +27,9 @@ export function PhotoDetail({
   const router = useRouter()
   const [info, setInfo] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
-  // Reset the info panel + clear transition when navigating to a different frame.
+  // Clear transition flag when navigating to a different frame.
   const [seenId, setSeenId] = useState(photo.id)
-  if (seenId !== photo.id) { setSeenId(photo.id); setInfo(false); setTransitioning(false) }
+  if (seenId !== photo.id) { setSeenId(photo.id); setTransitioning(false) }
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
 
