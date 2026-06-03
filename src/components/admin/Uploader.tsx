@@ -5,10 +5,19 @@ import { toJpegIfHeic } from "@/lib/client/heic"
 import { extractExif } from "@/lib/client/exif"
 import { deriveImages } from "@/lib/client/derive"
 import { computeThumbhash } from "@/lib/client/thumbhash"
+import { extractPoster } from "@/lib/client/poster"
 
 interface Pending {
-  file: File; preview: string; caption: string; tags: string
-  exif: Awaited<ReturnType<typeof extractExif>>; place: string; status: "ready" | "uploading" | "done" | "error"
+  file: File
+  preview: string          // object URL — for <img> (photos) or <video> (videos)
+  caption: string
+  tags: string
+  exif: Awaited<ReturnType<typeof extractExif>> | null  // null for videos
+  place: string
+  status: "ready" | "uploading" | "done" | "error"
+  mediaType: "photo" | "video"
+  duration: number | null  // seconds; null for photos
+  posterBlob: Blob | null  // full-res poster frame for videos; null for photos
 }
 
 export function Uploader({ onUploaded }: { onUploaded: () => void }) {
@@ -21,24 +30,44 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     if (!files) return
     let nextIdx = itemsRef.current.length
     for (const raw of Array.from(files)) {
-      const exif = await extractExif(raw)
-      const file = await toJpegIfHeic(raw)
+      const isVideo = raw.type.startsWith("video/")
       const idx = nextIdx++
-      setItems((prev) => [...prev, {
-        file, preview: URL.createObjectURL(file), caption: "", tags: "",
-        exif, place: "", status: "ready",
-      }])
-      if (exif.lat != null && exif.lon != null) {
-        fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
-          .then((r) => r.json())
-          .then((data) => {
-            const typed = data as { result?: { place?: string | null; country?: string | null } }
-            const r = typed.result
-            if (!r) return
-            const label = [r.place, r.country].filter(Boolean).join(", ")
-            if (label) setItems((prev) => prev.map((it, i) => i === idx ? { ...it, place: label } : it))
+
+      if (isVideo) {
+        // Add placeholder immediately so the user sees something
+        setItems((prev) => [...prev, {
+          file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
+          exif: null, place: "", status: "ready",
+          mediaType: "video", duration: null, posterBlob: null,
+        }])
+        // Extract poster + duration in the background
+        extractPoster(raw)
+          .then(({ blob, duration }) => {
+            setItems((prev) => prev.map((it, i) =>
+              i === idx ? { ...it, duration, posterBlob: blob } : it,
+            ))
           })
           .catch(() => {})
+      } else {
+        const exif = await extractExif(raw)
+        const file = await toJpegIfHeic(raw)
+        setItems((prev) => [...prev, {
+          file, preview: URL.createObjectURL(file), caption: "", tags: "",
+          exif, place: "", status: "ready",
+          mediaType: "photo", duration: null, posterBlob: null,
+        }])
+        if (exif.lat != null && exif.lon != null) {
+          fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
+            .then((r) => r.json())
+            .then((data) => {
+              const typed = data as { result?: { place?: string | null; country?: string | null } }
+              const r = typed.result
+              if (!r) return
+              const label = [r.place, r.country].filter(Boolean).join(", ")
+              if (label) setItems((prev) => prev.map((it, i) => i === idx ? { ...it, place: label } : it))
+            })
+            .catch(() => {})
+        }
       }
     }
   }
@@ -51,17 +80,52 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     const it = items[i]
     patch(i, { status: "uploading" })
     try {
-      const { large, thumb, width, height } = await deriveImages(it.file)
-      const thumbhash = await computeThumbhash(it.file)
-      const ext = (it.file.name.split(".").pop() || "jpg").toLowerCase()
-      const meta = {
-        caption: it.caption, tags: it.tags, takenAt: it.exif.takenAt,
-        width, height, bytes: it.file.size, format: ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg", ext,
-        colorSpace: it.exif.colorSpace, cameraMake: it.exif.cameraMake, cameraModel: it.exif.cameraModel, lens: it.exif.lens,
-        focal: it.exif.focal, fNumber: it.exif.fNumber, exposure: it.exif.exposure, iso: it.exif.iso,
-        lat: it.exif.lat, lon: it.exif.lon, alt: it.exif.alt,
-        place: it.place || null, thumbhash,
+      let large: Blob, thumb: Blob, width: number, height: number, thumbhash: string
+
+      if (it.mediaType === "video") {
+        // Use the cached poster blob; fall back to re-extracting if somehow missing
+        const posterBlob = it.posterBlob ?? (await extractPoster(it.file)).blob
+        const posterFile = new File([posterBlob], "poster.webp", { type: "image/webp" })
+        const derived = await deriveImages(posterFile)
+        large = derived.large; thumb = derived.thumb
+        width = derived.width; height = derived.height
+        thumbhash = await computeThumbhash(posterFile)
+      } else {
+        const derived = await deriveImages(it.file)
+        large = derived.large; thumb = derived.thumb
+        width = derived.width; height = derived.height
+        thumbhash = await computeThumbhash(it.file)
       }
+
+      const ext = it.mediaType === "video"
+        ? (it.file.name.split(".").pop() || "mp4").toLowerCase()
+        : (it.file.name.split(".").pop() || "jpg").toLowerCase()
+
+      const meta = {
+        caption: it.caption,
+        tags: it.tags,
+        takenAt: it.exif?.takenAt ?? it.file.lastModified,
+        width, height,
+        bytes: it.file.size,
+        format: it.mediaType === "video" ? ext : (ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg"),
+        ext,
+        colorSpace: it.exif?.colorSpace ?? null,
+        cameraMake: it.exif?.cameraMake ?? null,
+        cameraModel: it.exif?.cameraModel ?? null,
+        lens: it.exif?.lens ?? null,
+        focal: it.exif?.focal ?? null,
+        fNumber: it.exif?.fNumber ?? null,
+        exposure: it.exif?.exposure ?? null,
+        iso: it.exif?.iso ?? null,
+        lat: it.exif?.lat ?? null,
+        lon: it.exif?.lon ?? null,
+        alt: it.exif?.alt ?? null,
+        place: it.place || null,
+        thumbhash,
+        mediaType: it.mediaType,
+        duration: it.duration,
+      }
+
       const fd = new FormData()
       fd.append("original", it.file)
       fd.append("large", new File([large], "large.webp", { type: "image/webp" }))
@@ -81,12 +145,24 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     }
   }
 
+  function formatDuration(s: number | null): string {
+    if (s == null) return ""
+    const m = Math.floor(s / 60), sec = Math.round(s % 60)
+    return `${m}:${String(sec).padStart(2, "0")}`
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-3">
         <label className="flex h-28 flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line-2 font-mono text-[11px] uppercase tracking-[0.15em] text-muted hover:border-cyan/40">
-          Drop or choose photos
-          <input type="file" multiple accept="image/*,.heic,.heif" className="hidden" onChange={(e) => onFiles(e.target.files)} />
+          Drop or choose photos & videos
+          <input
+            type="file"
+            multiple
+            accept="image/*,.heic,.heif,video/mp4,video/quicktime,video/webm"
+            className="hidden"
+            onChange={(e) => onFiles(e.target.files)}
+          />
         </label>
         {readyCount > 1 && (
           <button
@@ -101,8 +177,13 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
       <div className="space-y-3">
         {items.map((it, i) => (
           <div key={i} className="flex gap-3 rounded-lg border border-line p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={it.preview} alt="" className="h-24 w-24 shrink-0 rounded object-cover" />
+            {it.mediaType === "video" ? (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video src={it.preview} className="h-24 w-24 shrink-0 rounded object-cover" muted playsInline />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={it.preview} alt="" className="h-24 w-24 shrink-0 rounded object-cover" />
+            )}
             <div className="min-w-0 flex-1 space-y-2">
               <input value={it.caption} onChange={(e) => patch(i, { caption: e.target.value })} placeholder="Caption" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-sm text-text outline-none focus:border-cyan/50" />
               <input value={it.tags} onChange={(e) => patch(i, { tags: e.target.value })} placeholder="#tags #separated" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 font-mono text-xs text-text outline-none focus:border-cyan/50" />
@@ -112,7 +193,14 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
                   {it.status === "done" ? "Posted ✓" : it.status === "uploading" ? "Posting…" : "Post"}
                 </button>
                 {it.status === "error" && <span className="font-mono text-[10px] text-amber">Failed</span>}
-                {it.exif.cameraModel && <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">{it.exif.cameraModel}</span>}
+                {it.mediaType === "video" && it.duration != null && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
+                    ▶ {formatDuration(it.duration)}
+                  </span>
+                )}
+                {it.mediaType === "photo" && it.exif?.cameraModel && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">{it.exif.cameraModel}</span>
+                )}
               </div>
             </div>
           </div>

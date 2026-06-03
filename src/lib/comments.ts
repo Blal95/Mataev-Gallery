@@ -47,6 +47,10 @@ export async function insertComment(
   return { id, author, body, createdAt: created_at }
 }
 
+export async function deleteComment(db: SqlDb, id: string): Promise<void> {
+  await db.prepare("DELETE FROM comments WHERE id = ?").bind(id).run()
+}
+
 /** Max comments from one IP in the rolling window (spam guard). */
 export async function countRecentByIp(db: SqlDb, ipHash: string, sinceMs: number): Promise<number> {
   const row = await db

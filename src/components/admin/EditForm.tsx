@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { PhotoDTO } from "@/types/photo"
 import { LocationPicker, type LocationValue } from "./LocationPicker"
+import type { CommentDTO } from "@/lib/comments"
 
 export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSaved: () => void; onDeleted: () => void }) {
   const [caption, setCaption] = useState(photo.caption ?? "")
@@ -16,6 +17,19 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
     countryCode: photo.countryCode ?? "",
   })
   const [busy, setBusy] = useState(false)
+  const [comments, setComments] = useState<CommentDTO[]>([])
+
+  useEffect(() => {
+    fetch(`/api/photos/${photo.id}/comments`)
+      .then((r) => r.json())
+      .then((d) => setComments((d as { comments: CommentDTO[] }).comments))
+      .catch(() => {})
+  }, [photo.id])
+
+  async function removeComment(id: string) {
+    await fetch(`/api/admin/comments/${id}`, { method: "DELETE" })
+    setComments((prev) => prev.filter((c) => c.id !== id))
+  }
 
   async function save() {
     setBusy(true)
@@ -60,6 +74,25 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
         </button>
         <button onClick={remove} disabled={busy} className="ml-auto rounded border border-danger/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
       </div>
+      {comments.length > 0 && (
+        <div className="space-y-1 border-t border-line pt-2">
+          <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-muted">{comments.length} comment{comments.length !== 1 ? "s" : ""}</p>
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2 rounded border border-line p-2">
+              <div className="min-w-0 flex-1">
+                <span className="font-mono text-[10px] text-cyan">{c.author}</span>
+                <p className="text-xs text-text">{c.body}</p>
+              </div>
+              <button
+                onClick={() => removeComment(c.id)}
+                className="shrink-0 rounded border border-danger/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-amber hover:bg-amber/10"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
