@@ -14,7 +14,15 @@ export const metadata: Metadata = {
   description: "Every geotagged photograph, plotted on a map.",
 }
 
-export default async function AtlasPage() {
+export default async function AtlasPage({ searchParams }: { searchParams: Promise<{ lat?: string; lon?: string; z?: string }> }) {
+  const sp = await searchParams
+  const centerLat = sp.lat ? parseFloat(sp.lat) : null
+  const centerLon = sp.lon ? parseFloat(sp.lon) : null
+  const initialCenter = centerLat != null && centerLon != null && !isNaN(centerLat) && !isNaN(centerLon)
+    ? ([centerLat, centerLon] as [number, number])
+    : undefined
+  const initialZoom = sp.z ? parseInt(sp.z) : 11
+
   const cdn = cdnBase()
   const geo = await listGeoPhotos(db())
   const pins: AtlasPin[] = geo.map((p) => ({
@@ -46,7 +54,7 @@ export default async function AtlasPage() {
       {pins.length === 0 ? (
         <EmptyState label="No geotagged photos yet" />
       ) : (
-        <AtlasMap pins={pins} className="flex-1" />
+        <AtlasMap pins={pins} className="flex-1" initialCenter={initialCenter} initialZoom={initialZoom} />
       )}
     </main>
   )

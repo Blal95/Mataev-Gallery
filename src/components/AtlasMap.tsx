@@ -22,12 +22,18 @@ export interface AtlasPin {
  * Leaflet is imported lazily inside the effect (it touches `window`, so it must
  * never reach the server bundle) and only loads when this page renders.
  */
-export function AtlasMap({ pins, className }: { pins: AtlasPin[]; className?: string }) {
+export function AtlasMap({ pins, className, initialCenter, initialZoom }: {
+  pins: AtlasPin[]; className?: string
+  initialCenter?: [number, number]
+  initialZoom?: number
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
   // Keep the latest pins/router reachable from the mount-only effect without
   // re-initialising the whole map when they change.
   const pinsRef = useRef(pins)
+  const initialCenterRef = useRef(initialCenter)
+  const initialZoomRef = useRef(initialZoom)
   const routerRef = useRef(router)
   useEffect(() => { pinsRef.current = pins }, [pins])
   useEffect(() => { routerRef.current = router }, [router])
@@ -98,8 +104,12 @@ export function AtlasMap({ pins, className }: { pins: AtlasPin[]; className?: st
         })
       })
 
-      // Frame the map around all pins; fall back to a Norway↔Caucasus view.
-      if (markers.length > 0) {
+      // If a specific center was requested (e.g. from a photo location link), use it.
+      // Otherwise frame around all pins; fall back to a Norway↔Caucasus view.
+      const center = initialCenterRef.current
+      if (center) {
+        map.setView(center, initialZoomRef.current ?? 10)
+      } else if (markers.length > 0) {
         const group = L.featureGroup(markers)
         map.fitBounds(group.getBounds().pad(0.25), { maxZoom: 8 })
       } else {

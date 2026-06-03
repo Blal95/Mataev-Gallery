@@ -25,7 +25,10 @@ export function PhotoDetail({
   photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; asModal: boolean
 }) {
   const router = useRouter()
-  const [info, setInfo] = useState(false)
+  const [info, setInfo] = useState(() => {
+    if (typeof window === "undefined") return false
+    return sessionStorage.getItem("detail-info") === "1"
+  })
   const [transitioning, setTransitioning] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -75,6 +78,11 @@ export function PhotoDetail({
     return () => window.removeEventListener("keydown", onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, asModal, prev, next, info, isVideo])
+
+  // Persist info panel open/close state across navigation
+  useEffect(() => {
+    sessionStorage.setItem("detail-info", info ? "1" : "0")
+  }, [info])
 
   // Autoplay 1s after canplay fires
   useEffect(() => {
@@ -255,16 +263,21 @@ export function PhotoDetail({
                 </p>
               )}
 
-              {/* Location */}
+              {/* Location — links to Atlas centered on this photo */}
               {locationLine && (
-                <div className="mb-4 flex items-center gap-2">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60" aria-hidden>
+                <Link
+                  href={photo.lat != null && photo.lon != null
+                    ? `/atlas?lat=${photo.lat}&lon=${photo.lon}`
+                    : "/atlas"}
+                  className="mb-4 flex items-center gap-2 group/loc w-fit"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60 transition-colors group-hover/loc:text-amber" aria-hidden>
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2 transition-colors group-hover/loc:text-amber">
                     {flag && <span className="mr-1">{flag}</span>}{locationLine}
                   </span>
-                </div>
+                </Link>
               )}
 
               {/* Metadata */}
