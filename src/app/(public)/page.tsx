@@ -9,7 +9,7 @@ import { PAGE_SIZE } from "@/config/site"
 export const dynamic = "force-dynamic"
 
 export default async function Home() {
-  const { photos, tags, nextOffset } = await buildPhotosResponse(db(), cdnBase(), { limit: PAGE_SIZE, offset: 0 })
+  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), await cdnBase(), { limit: PAGE_SIZE, offset: 0 })
   return (
     <main>
       <TagIndex tags={tags} />

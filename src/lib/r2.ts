@@ -9,11 +9,11 @@ export function photoKeys(id: string, ext: string) {
 }
 
 export async function putPhotoObject(key: string, body: ArrayBuffer, contentType: string): Promise<void> {
-  await cf().PHOTOS.put(key, body, {
+  await (await cf()).PHOTOS.put(key, body, {
     httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" },
   })
 }
 
 export async function deletePhotoObjects(keys: string[]): Promise<void> {
-  await cf().PHOTOS.delete(keys)
+  await (await cf()).PHOTOS.delete(keys)
 }

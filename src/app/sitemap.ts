@@ -11,8 +11,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { listPhotos, listTagCounts } = await import("@/lib/photos")
     const { rowToDTO } = await import("@/lib/serialize")
 
-    const dbInst = db()
-    const cdn = cdnBase()
+    const dbInst = await db()
+    const cdn = await cdnBase()
 
     const [photosWithTags, tagCounts] = await Promise.all([
       listPhotos(dbInst, {}),

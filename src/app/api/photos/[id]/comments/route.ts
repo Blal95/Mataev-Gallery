@@ -14,20 +14,21 @@ function guard(req: Request) {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const found = await getPhoto(db(), id)
+  const database = await db()
+  const found = await getPhoto(database, id)
   if (!found) return Response.json({ error: "not found" }, { status: 404 })
-  const comments = await listComments(db(), found.row.id)
+  const comments = await listComments(database, found.row.id)
   return Response.json({ comments })
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!guard(req)) return Response.json({ error: "bad origin" }, { status: 403 })
   const { id } = await params
-  const found = await getPhoto(db(), id)
+  const database = await db()
+  const found = await getPhoto(database, id)
   if (!found) return Response.json({ error: "not found" }, { status: 404 })
 
   const body = (await req.json()) as { author?: string; body?: string; website?: string }
-  // Honeypot — bots fill hidden fields; pretend success.
   if (body.website?.trim()) return Response.json({ ok: true })
 
   const author = (body.author ?? "").trim().slice(0, 40)
@@ -37,11 +38,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const ipHash = await hashIp(req)
-  const recent = await countRecentByIp(db(), ipHash, Date.now() - RATE_WINDOW_MS)
+  const recent = await countRecentByIp(database, ipHash, Date.now() - RATE_WINDOW_MS)
   if (recent >= RATE_MAX) {
     return Response.json({ error: "too many comments — try again later" }, { status: 429 })
   }
 
-  const comment = await insertComment(db(), found.row.id, author, text, ipHash)
+  const comment = await insertComment(database, found.row.id, author, text, ipHash)
   return Response.json({ comment })
 }

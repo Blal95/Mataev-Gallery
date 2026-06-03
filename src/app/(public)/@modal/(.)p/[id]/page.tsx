@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 
 export default async function PhotoModal({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getDetail(db(), cdnBase(), id)
+  const data = await getDetail(await db(), await cdnBase(), id)
   if (!data) return null
   return (
     <ModalShell>

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   try {
     const { id } = await params
-    const data = await getDetail(db(), cdnBase(), id)
+    const data = await getDetail(await db(), await cdnBase(), id)
     if (!data) {
       return { title: "Not Found — MATAEV" }
     }
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const data = await getDetail(db(), cdnBase(), id)
+  const data = await getDetail(await db(), await cdnBase(), id)
   if (!data) notFound()
   return (
     <div className="fixed inset-0 z-50">

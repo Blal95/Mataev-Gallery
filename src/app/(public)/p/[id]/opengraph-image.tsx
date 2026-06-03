@@ -53,7 +53,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
 
   let photo = null
   try {
-    photo = await getPhotoDTO(db(), cdnBase(), id)
+    photo = await getPhotoDTO(await db(), await cdnBase(), id)
   } catch {}
 
   const caption = photo?.caption ?? null

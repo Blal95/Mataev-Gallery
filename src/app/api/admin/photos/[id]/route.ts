@@ -19,7 +19,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     caption?: string; place?: string | null; country?: string | null; countryCode?: string | null
     lat?: number | null; lon?: number | null; tags?: string; published?: number
   }
-  await updatePhoto(db(), id, {
+  const database = await db()
+  await updatePhoto(database, id, {
     caption: body.caption,
     place: body.place ?? undefined,
     country: body.country ?? undefined,
@@ -28,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     gps_lat: body.lat === undefined ? undefined : body.lat,
     gps_lon: body.lon === undefined ? undefined : body.lon,
   })
-  if (body.tags != null) await setTags(db(), id, parseTags(body.tags))
+  if (body.tags != null) await setTags(database, id, parseTags(body.tags))
   return Response.json({ ok: true })
 }
 
@@ -36,7 +37,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!(await isAuthed())) return Response.json({ error: "unauthorized" }, { status: 401 })
   if (!guard(req)) return Response.json({ error: "bad origin" }, { status: 403 })
   const { id } = await params
-  const keys = await deletePhoto(db(), id)
+  const keys = await deletePhoto(await db(), id)
   if (keys.length) await deletePhotoObjects(keys)
   return Response.json({ ok: true })
 }

@@ -66,6 +66,6 @@ export async function POST(req: Request) {
     media_type: meta.mediaType === "video" ? "video" : "photo",
     duration: meta.duration ?? null,
   }
-  await insertPhoto(db(), row, parseTags(meta.tags ?? ""))
+  await insertPhoto(await db(), row, parseTags(meta.tags ?? ""))
   return Response.json({ ok: true, id, slug: row.slug })
 }

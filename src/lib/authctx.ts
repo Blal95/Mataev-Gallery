@@ -19,7 +19,7 @@ export async function challengeId(): Promise<string> {
 export async function startSession(): Promise<void> {
   const jar = await cookies()
   const secure = await cookieSecure()
-  const token = await signSession({ sub: "admin", exp: Date.now() + 30 * 864e5 }, cf().SESSION_SECRET)
+  const token = await signSession({ sub: "admin", exp: Date.now() + 30 * 864e5 }, (await cf()).SESSION_SECRET)
   jar.set(SESSION_COOKIE, token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 30 * 86400 })
 }
 
@@ -27,7 +27,7 @@ export async function isAuthed(): Promise<boolean> {
   const jar = await cookies()
   const token = jar.get(SESSION_COOKIE)?.value
   if (!token) return false
-  return (await verifySession(token, cf().SESSION_SECRET)) !== null
+  return (await verifySession(token, (await cf()).SESSION_SECRET)) !== null
 }
 
 export async function endSession(): Promise<void> {

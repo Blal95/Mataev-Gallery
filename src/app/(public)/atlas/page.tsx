@@ -23,8 +23,8 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
     : undefined
   const initialZoom = sp.z ? parseInt(sp.z) : 11
 
-  const cdn = cdnBase()
-  const geo = await listGeoPhotos(db())
+  const cdn = await cdnBase()
+  const geo = await listGeoPhotos(await db())
   const pins: AtlasPin[] = geo.map((p) => ({
     slug: p.slug,
     lat: p.lat,
