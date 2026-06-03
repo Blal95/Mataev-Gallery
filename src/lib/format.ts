@@ -28,6 +28,13 @@ export function flagEmoji(code: string | null): string {
   return String.fromCodePoint(A + (up.charCodeAt(0) - 65), A + (up.charCodeAt(1) - 65))
 }
 
+export function formatDuration(seconds: number | null): string | null {
+  if (seconds == null || seconds <= 0) return null
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return `${m}:${String(s).padStart(2, "0")}`
+}
+
 export function formatCamera(make: string | null, model: string | null): string | null {
   if (!model && !make) return null
   if (!model) return make
