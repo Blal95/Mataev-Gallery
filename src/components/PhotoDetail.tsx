@@ -41,6 +41,8 @@ export function PhotoDetail({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [canPlay, setCanPlay] = useState(false)
   const isVideo = photo.mediaType === "video"
+  const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
 
   const prev = neighbours[index - 1]
   const next = neighbours[index + 1]
@@ -54,6 +56,23 @@ export function PhotoDetail({
     setTransitioning(true)
     if (asModal) router.replace(`/p/${slug}`)
     else router.push(`/p/${slug}`)
+  }
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null || touchStartY.current == null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    touchStartX.current = null
+    touchStartY.current = null
+    // Only horizontal swipes (dx dominates, min 50px threshold)
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
+    if (dx < 0 && next) goto(next.slug)
+    if (dx > 0 && prev) goto(prev.slug)
   }
 
   const togglePlayback = () => {
@@ -171,7 +190,11 @@ export function PhotoDetail({
       </div>
 
       {/* Stage */}
-      <div className="relative min-h-0 flex-1">
+      <div
+        className="relative min-h-0 flex-1"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <div className="absolute inset-0" onClick={asModal ? close : undefined} aria-hidden />
 
         <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
@@ -189,7 +212,7 @@ export function PhotoDetail({
               onTimeUpdate={() => { setVideoTime(videoRef.current?.currentTime ?? 0) }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
-              onClick={() => setInfo((v) => !v)}
+              onClick={togglePlayback}
               className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
             />
           ) : (
