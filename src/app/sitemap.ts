@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${BASE}/image/${dto.slug}`,
         lastModified: (() => {
           if (!row.created_at) return undefined
-          const d = new Date(row.created_at * 1000)
+          const d = new Date(row.created_at)
           if (isNaN(d.getTime())) return undefined
           return d.toISOString().split("T")[0]
         })(),
