@@ -24,7 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: (() => {
           if (!row.created_at) return undefined
           const d = new Date(row.created_at * 1000)
-          return isNaN(d.getTime()) ? undefined : d
+          if (isNaN(d.getTime())) return undefined
+          return d.toISOString().split("T")[0]
         })(),
         changeFrequency: "monthly",
         priority: 0.7,
