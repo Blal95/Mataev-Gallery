@@ -75,6 +75,8 @@ export function PhotoComments({ photoId }: { photoId: string }) {
                 {c.author}
                 <span className="mx-2 text-line-2">·</span>
                 {new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                <span className="mx-2 text-line-2">·</span>
+                {new Date(c.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </div>
               <p className="mt-1 leading-relaxed text-text">{c.body}</p>
             </li>
