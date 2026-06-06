@@ -60,7 +60,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   } catch {}
 
   const caption = photo?.caption ?? null
-  const placeFlagSrc = photo ? flagUrl(photo.countryCode) : null
+  const placeFlagSrc = photo ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
   const place = photo?.place ?? ""
   // Satori (next/og) can only decode PNG/JPEG — the large/thumb renditions are
   // WebP, so they render blank. The original is the only JPEG/PNG rendition, so

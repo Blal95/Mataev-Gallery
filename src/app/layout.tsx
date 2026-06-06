@@ -21,6 +21,14 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gallery.mataev.no"),
   title: "MATAEV — Photography",
   description: "Photographs by Bilal R. Mataev.",
+  keywords: [
+    "Bilal Mataev",
+    "Bilal R. Mataev",
+    "Bilal Rasulovich Mataev",
+    "Mataev",
+    "Mataev photography",
+    "Bilal Mataev photography",
+  ],
   openGraph: {
     siteName: "MATAEV",
     type: "website",
@@ -34,9 +42,44 @@ export const metadata: Metadata = {
   },
 }
 
+const personJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Bilal R. Mataev",
+  alternateName: ["Bilal Mataev", "Bilal Rasulovich Mataev", "Bilal R Mataev", "Mataev"],
+  url: "https://mataev.no",
+  sameAs: [
+    "https://mataev.no",
+    "https://github.com/Blal95",
+    "https://linkedin.com/in/bilalrmataev",
+  ],
+}
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "MATAEV — Photography",
+  url: "https://gallery.mataev.no",
+  author: {
+    "@type": "Person",
+    name: "Bilal R. Mataev",
+    url: "https://mataev.no",
+  },
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${serif.variable} ${mono.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   )

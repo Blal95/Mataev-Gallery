@@ -99,15 +99,19 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         })
 
         const cc = pin.countryCode
-        const flagEmoji = cc && cc.length === 2
+        const isChechnya = cc === "RU" && pin.lat >= 42.5 && pin.lat <= 43.8 && pin.lon >= 44.8 && pin.lon <= 47.0
+        const flagEmoji = isChechnya ? "" : (cc && cc.length === 2
           ? [...cc.toUpperCase()].map(ch => String.fromCodePoint(ch.codePointAt(0)! + 0x1F1E6 - 65)).join("")
-          : ""
+          : "")
+        const flagPrefix = isChechnya
+          ? `<img src="/ichkeria.png" alt="" style="display:inline-block;height:10px;width:auto;vertical-align:middle;margin-right:3px" /> `
+          : (flagEmoji ? flagEmoji + " " : "")
         const placeLabel = pin.place ? escapeHtml(pin.place) : ""
         marker.bindPopup(
           `<a href="/image/${pin.slug}" data-slug="${pin.slug}" style="display:block;width:150px;text-decoration:none;color:inherit">
              <img src="${pin.thumb}" alt="" style="width:150px;height:100px;object-fit:cover;border-radius:4px;display:block" loading="lazy" />
              ${pin.caption ? `<div style="font-style:italic;font-size:12px;margin-top:6px;line-height:1.3;color:#e8e4dc">${escapeHtml(pin.caption)}</div>` : ""}
-             ${placeLabel ? `<div style="font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-top:4px;color:#9a948a">${flagEmoji ? flagEmoji + " " : ""}${placeLabel}</div>` : ""}
+             ${placeLabel ? `<div style="font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-top:4px;color:#9a948a">${flagPrefix}${placeLabel}</div>` : ""}
            </a>`,
           { closeButton: true, className: "atlas-popup", minWidth: 150, maxWidth: 150 },
         )
@@ -131,9 +135,12 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         const main = clusterPins[0]
         const rest = clusterPins.slice(1)
         const cc = main.countryCode
-        const flag = cc && cc.length === 2
-          ? [...cc.toUpperCase()].map(ch => String.fromCodePoint(ch.codePointAt(0)! + 0x1F1E6 - 65)).join("") + " "
-          : ""
+        const isMainChechnya = cc === "RU" && main.lat >= 42.5 && main.lat <= 43.8 && main.lon >= 44.8 && main.lon <= 47.0
+        const flag = isMainChechnya
+          ? `<img src="/ichkeria.png" alt="" style="display:inline-block;height:10px;width:auto;vertical-align:middle;margin-right:3px" /> `
+          : (cc && cc.length === 2
+            ? [...cc.toUpperCase()].map(ch => String.fromCodePoint(ch.codePointAt(0)! + 0x1F1E6 - 65)).join("") + " "
+            : "")
         const placeLabel = main.place ? escapeHtml(main.place) : ""
 
         const restHtml = rest.length > 0

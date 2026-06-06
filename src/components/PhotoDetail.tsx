@@ -8,7 +8,7 @@ import { Filmstrip } from "./Filmstrip"
 import { PhotoComments } from "./PhotoComments"
 import Logo from "./Logo"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
-import { flagEmoji, formatDuration, formatBytes } from "@/lib/format"
+import { flagEmoji, flagUrl, formatDuration, formatBytes } from "@/lib/format"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -232,7 +232,8 @@ export function PhotoDetail({
     ? new Date(photo.takenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
     : null
 
-  const flag = flagEmoji(photo.countryCode)
+  const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
+  const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
   const locationLine = [photo.place, photo.country].filter(Boolean).join(", ")
 
   const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
@@ -425,7 +426,7 @@ export function PhotoDetail({
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                       </svg>
                       <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-2 transition-colors group-hover/loc:text-amber">
-                        {flag && <span className="mr-1">{flag}</span>}{locationLine}
+                        {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="inline-block h-[11px] w-auto align-middle mr-1" /> : null}{locationLine}
                       </span>
                     </a>
                   ) : <span />}

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { thumbhashToUrl } from "@/lib/thumbhash"
-import { flagEmoji } from "@/lib/format"
+import { flagEmoji, flagUrl } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
 
 function Tick({ pos }: { pos: string }) {
@@ -18,7 +18,8 @@ export function PhotoTile({
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const colW = Math.round(width)
   const frame = String(index + 1).padStart(3, "0")
-  const flag = flagEmoji(photo.countryCode)
+  const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
+  const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
   const locationLine = [photo.place, photo.country].filter(Boolean).join(", ")
 
   const srcSet = useMemo(() => {
@@ -89,7 +90,7 @@ export function PhotoTile({
         )}
         {locationLine && (
           <p className="font-mono text-[8.5px] uppercase tracking-[0.18em] text-white/55">
-            {flag && <span className="text-[10px] not-italic">{flag}</span>} {locationLine}
+            {flag ? <span className="text-[10px] not-italic">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="inline-block h-[9px] w-auto align-middle not-italic" /> : null} {locationLine}
           </p>
         )}
       </div>

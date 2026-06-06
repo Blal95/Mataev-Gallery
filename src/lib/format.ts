@@ -21,12 +21,20 @@ export function formatFocal(mm: number | null): string | null {
   return mm == null ? null : `${Math.round(mm)}mm`
 }
 
-export function flagUrl(code: string | null): string | null {
+// Chechnya (Ichkeria) bounding box — show Ichkeria flag instead of Russian flag
+function isInChechnya(lat: number | null | undefined, lon: number | null | undefined): boolean {
+  if (lat == null || lon == null) return false
+  return lat >= 42.5 && lat <= 43.8 && lon >= 44.8 && lon <= 47.0
+}
+
+export function flagUrl(code: string | null, lat?: number | null, lon?: number | null): string | null {
+  if (code === "RU" && isInChechnya(lat, lon)) return "/ichkeria.png"
   if (!code || code.length !== 2) return null
   return `https://flagcdn.com/32x24/${code.toLowerCase()}.png`
 }
 
-export function flagEmoji(code: string | null): string | null {
+export function flagEmoji(code: string | null, lat?: number | null, lon?: number | null): string | null {
+  if (code === "RU" && isInChechnya(lat, lon)) return null
   if (!code || code.length !== 2) return null
   const offset = 0x1F1E6 - 65
   return [...code.toUpperCase()].map(c => String.fromCodePoint(c.codePointAt(0)! + offset)).join("")

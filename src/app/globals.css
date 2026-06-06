@@ -73,6 +73,7 @@ button:focus-visible {
   position: relative;
   z-index: 0;
   isolation: isolate;
+  background: #1a1814;
 }
 
 /* Atlas map — dark popups so Leaflet's default white card matches the theme */
