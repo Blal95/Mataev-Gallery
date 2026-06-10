@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const isAdminPage = req.nextUrl.pathname === "/admin"
   if (!isAdminPage) return NextResponse.next()
   // Page itself renders login when unauthenticated; middleware only enforces
