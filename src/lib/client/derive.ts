@@ -1,7 +1,24 @@
 export interface Derived { large: Blob; thumb: Blob; width: number; height: number }
 
 async function loadBitmap(file: File): Promise<ImageBitmap> {
-  return createImageBitmap(file)
+  try {
+    return await createImageBitmap(file)
+  } catch {
+    // Fallback for formats the browser displays natively in <img> but
+    // createImageBitmap() can't decode directly (e.g. HEIC on Safari desktop).
+    const url = URL.createObjectURL(file)
+    try {
+      const img = new Image()
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error("Unsupported image format — try exporting as JPEG"))
+        img.src = url
+      })
+      return await createImageBitmap(img)
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  }
 }
 
 function scaleTo(bmp: ImageBitmap, maxEdge: number, quality: number): Promise<Blob> {

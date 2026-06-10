@@ -33,10 +33,15 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     })
   }, [])
 
+  const MAX_ITEMS = 10
+
   async function onFiles(files: FileList | null) {
     if (!files) return
+    const slots = MAX_ITEMS - itemsRef.current.length
+    if (slots <= 0) return
+    const incoming = Array.from(files).slice(0, slots)
     let nextIdx = itemsRef.current.length
-    for (const raw of Array.from(files)) {
+    for (const raw of incoming) {
       const isVideo = raw.type.startsWith("video/")
       const idx = nextIdx++
 
@@ -181,11 +186,12 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-3">
-        <label className="flex h-28 flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line-2 font-mono text-[11px] uppercase tracking-[0.15em] text-muted hover:border-cyan/40">
-          Drop or choose photos & videos
+        <label className={`flex h-28 flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed font-mono text-[11px] uppercase tracking-[0.15em] text-muted ${items.length >= MAX_ITEMS ? "border-line opacity-40 cursor-not-allowed" : "border-line-2 hover:border-cyan/40"}`}>
+          {items.length >= MAX_ITEMS ? `Max ${MAX_ITEMS} items` : `Drop or choose photos & videos (max ${MAX_ITEMS})`}
           <input
             type="file"
             multiple
+            disabled={items.length >= MAX_ITEMS}
             accept="image/*,.heic,.heif,video/mp4,video/quicktime,video/webm"
             className="hidden"
             onChange={(e) => onFiles(e.target.files)}
