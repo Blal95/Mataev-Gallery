@@ -106,6 +106,8 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
     try {
       let large: Blob, thumb: Blob, width: number, height: number, thumbhash: string
 
+      let originalFile: File
+
       if (it.mediaType === "video") {
         // Use the cached poster blob; fall back to re-extracting if somehow missing
         const posterBlob = it.posterBlob ?? (await extractPoster(it.file)).blob
@@ -114,24 +116,31 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         large = derived.large; thumb = derived.thumb
         width = derived.width; height = derived.height
         thumbhash = await computeThumbhash(posterFile)
+        originalFile = it.file
       } else {
         const derived = await deriveImages(it.file)
         large = derived.large; thumb = derived.thumb
         width = derived.width; height = derived.height
         thumbhash = await computeThumbhash(it.file)
+        // Large originals (ProRAW, high-res HEIC) would cause 503 in the Worker.
+        // Use the 2400px archive WebP instead — still high quality but fits in memory.
+        originalFile = derived.archive
+          ? new File([derived.archive], "original.webp", { type: "image/webp" })
+          : it.file
       }
 
+      const isArchived = originalFile !== it.file
       const ext = it.mediaType === "video"
         ? (it.file.name.split(".").pop() || "mp4").toLowerCase()
-        : (it.file.name.split(".").pop() || "jpg").toLowerCase()
+        : isArchived ? "webp" : (it.file.name.split(".").pop() || "jpg").toLowerCase()
 
       const meta = {
         caption: it.caption,
         tags: it.tags,
         takenAt: it.exif?.takenAt ?? it.file.lastModified,
         width, height,
-        bytes: it.file.size,
-        format: it.mediaType === "video" ? ext : (ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg"),
+        bytes: originalFile.size,
+        format: it.mediaType === "video" ? ext : (isArchived ? "webp" : ext === "png" ? "png" : ext === "webp" ? "webp" : "jpeg"),
         ext,
         colorSpace: it.exif?.colorSpace ?? null,
         cameraMake: it.exif?.cameraMake ?? null,
@@ -151,7 +160,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
       }
 
       const fd = new FormData()
-      fd.append("original", it.file)
+      fd.append("original", originalFile)
       fd.append("large", new File([large], "large.webp", { type: "image/webp" }))
       fd.append("thumb", new File([thumb], "thumb.webp", { type: "image/webp" }))
       fd.append("meta", JSON.stringify(meta))

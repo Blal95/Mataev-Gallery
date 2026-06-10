@@ -1,4 +1,4 @@
-export interface Derived { large: Blob; thumb: Blob; width: number; height: number }
+export interface Derived { large: Blob; thumb: Blob; archive: Blob | null; width: number; height: number }
 
 async function loadBitmap(file: File): Promise<ImageBitmap> {
   try {
@@ -30,10 +30,17 @@ function scaleTo(bmp: ImageBitmap, maxEdge: number, quality: number): Promise<Bl
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/webp", quality))
 }
 
+const MAX_RAW_BYTES = 15 * 1024 * 1024 // above this, generate a 2400px WebP archive instead of sending raw
+
 export async function deriveImages(file: File): Promise<Derived> {
   const bmp = await loadBitmap(file)
-  const [large, thumb] = await Promise.all([scaleTo(bmp, 1600, 0.82), scaleTo(bmp, 500, 0.72)])
+  const needsArchive = file.size > MAX_RAW_BYTES
+  const [large, thumb, archive] = await Promise.all([
+    scaleTo(bmp, 1600, 0.82),
+    scaleTo(bmp, 500, 0.72),
+    needsArchive ? scaleTo(bmp, 2400, 0.92) : Promise.resolve(null),
+  ])
   const { width, height } = bmp
   bmp.close()
-  return { large, thumb, width, height }
+  return { large, thumb, archive, width, height }
 }

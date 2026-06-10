@@ -13,21 +13,35 @@ export async function forwardGeocode(query: string, f: typeof fetch = fetch): Pr
   const q = query.trim()
   if (q.length < 2) return []
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=8&addressdetails=1`
     const res = await f(url, { headers: { "User-Agent": "MataevGallery/1.0 (admin location picker)" } })
     if (!res.ok) return []
     const rows = (await res.json()) as {
       lat: string
       lon: string
+      name: string
       display_name: string
-      address?: { city?: string; town?: string; village?: string; locality?: string; country?: string; country_code?: string }
+      address?: {
+        amenity?: string; tourism?: string; railway?: string; aeroway?: string
+        historic?: string; leisure?: string; shop?: string; building?: string
+        city?: string; town?: string; village?: string; locality?: string; suburb?: string
+        country?: string; country_code?: string
+      }
     }[]
     return rows.map((r) => {
-      const a = r.address
-      const place = a?.city || a?.town || a?.village || a?.locality || null
-      const country = a?.country || null
-      const countryCode = a?.country_code?.toUpperCase() ?? null
-      const label = [place, country].filter(Boolean).join(", ") || r.display_name
+      const a = r.address ?? {}
+      // Specific venue/POI name from any address category
+      const specific = a.amenity || a.tourism || a.railway || a.aeroway ||
+        a.historic || a.leisure || a.shop || a.building || null
+      // Administrative city level
+      const city = a.city || a.town || a.village || a.locality || null
+      const country = a.country || null
+      const countryCode = a.country_code?.toUpperCase() ?? null
+      // place = specific name if it's a named POI, else city
+      const place = specific || r.name || city
+      // label shown in dropdown: specific name + city + country
+      const labelParts = [specific || r.name, city, country].filter(Boolean)
+      const label = labelParts.length > 0 ? labelParts.join(", ") : r.display_name
       return {
         lat: Number(r.lat),
         lon: Number(r.lon),
