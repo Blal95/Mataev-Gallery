@@ -46,11 +46,13 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
 
 export async function listPhotos(
   db: SqlDb,
-  opts: { tag?: string; limit?: number; offset?: number },
+  opts: { tag?: string; limit?: number; offset?: number; all?: boolean },
 ): Promise<PhotoWithTags[]> {
   const off = opts.offset ?? 0
   const pagination = opts.limit != null ? ` LIMIT ? OFFSET ?` : ""
   const bindsExtra: unknown[] = opts.limit != null ? [opts.limit, off] : []
+  const pubFilter = opts.all ? "" : " AND p.published = 1"
+  const pubWhere = opts.all ? "" : " WHERE published = 1"
 
   let rows: PhotoRow[]
   if (opts.tag) {
@@ -58,7 +60,7 @@ export async function listPhotos(
       .prepare(
         `SELECT ${COLS.split(",").map((c) => "p." + c).join(",")} FROM photos p
          JOIN photo_tags pt ON pt.photo_id = p.id JOIN tags t ON t.id = pt.tag_id
-         WHERE t.name = ? AND p.published = 1 ORDER BY p.taken_at DESC, p.created_at DESC${pagination}`,
+         WHERE t.name = ?${pubFilter} ORDER BY p.taken_at DESC, p.created_at DESC${pagination}`,
       )
       .bind(opts.tag, ...bindsExtra)
       .all<PhotoRow>()
@@ -66,7 +68,7 @@ export async function listPhotos(
   } else {
     const r = await db
       .prepare(
-        `SELECT ${COLS} FROM photos WHERE published = 1 ORDER BY taken_at DESC, created_at DESC${pagination}`,
+        `SELECT ${COLS} FROM photos${pubWhere} ORDER BY taken_at DESC, created_at DESC${pagination}`,
       )
       .bind(...bindsExtra)
       .all<PhotoRow>()

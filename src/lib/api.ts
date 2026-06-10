@@ -5,7 +5,7 @@ import { rowToDTO } from "./serialize"
 
 export async function buildPhotosResponse(
   db: SqlDb,
-  opts: { tag?: string; limit?: number; offset?: number },
+  opts: { tag?: string; limit?: number; offset?: number; all?: boolean },
 ): Promise<PhotosResponse> {
   const [list, tags] = await Promise.all([listPhotos(db, opts), listTagCounts(db)])
   const photos = list.map(({ row, tags }) => rowToDTO(row, tags))
