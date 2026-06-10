@@ -18,13 +18,19 @@ interface Pending {
   mediaType: "photo" | "video"
   duration: number | null  // seconds; null for photos
   posterBlob: Blob | null  // full-res poster frame for videos; null for photos
+  posterUrl: string | null // object URL for video thumbnail preview
 }
 
 export function Uploader({ onUploaded }: { onUploaded: () => void }) {
   const [items, setItems] = useState<Pending[]>([])
   const itemsRef = useRef<Pending[]>([])
   useEffect(() => { itemsRef.current = items }, [items])
-  useEffect(() => () => { itemsRef.current.forEach((it) => URL.revokeObjectURL(it.preview)) }, [])
+  useEffect(() => () => {
+    itemsRef.current.forEach((it) => {
+      URL.revokeObjectURL(it.preview)
+      if (it.posterUrl) URL.revokeObjectURL(it.posterUrl)
+    })
+  }, [])
 
   async function onFiles(files: FileList | null) {
     if (!files) return
@@ -38,13 +44,14 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         setItems((prev) => [...prev, {
           file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
           exif: null, place: "", status: "ready",
-          mediaType: "video", duration: null, posterBlob: null,
+          mediaType: "video", duration: null, posterBlob: null, posterUrl: null,
         }])
         // Extract poster + duration in the background
         extractPoster(raw)
           .then(({ blob, duration }) => {
+            const posterUrl = URL.createObjectURL(blob)
             setItems((prev) => prev.map((it, i) =>
-              i === idx ? { ...it, duration, posterBlob: blob } : it,
+              i === idx ? { ...it, duration, posterBlob: blob, posterUrl } : it,
             ))
           })
           .catch(() => {})
@@ -54,7 +61,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         setItems((prev) => [...prev, {
           file, preview: URL.createObjectURL(file), caption: "", tags: "",
           exif, place: "", status: "ready",
-          mediaType: "photo", duration: null, posterBlob: null,
+          mediaType: "photo", duration: null, posterBlob: null, posterUrl: null,
         }])
         if (exif.lat != null && exif.lon != null) {
           fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
@@ -179,7 +186,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
           <div key={i} className="flex gap-3 rounded-lg border border-line p-3">
             {it.mediaType === "video" ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video src={it.preview} className="h-24 w-24 shrink-0 rounded object-cover" muted playsInline />
+              <video src={it.preview} poster={it.posterUrl ?? undefined} className="h-24 w-24 shrink-0 rounded object-cover" muted playsInline />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={it.preview} alt="" className="h-24 w-24 shrink-0 rounded object-cover" />

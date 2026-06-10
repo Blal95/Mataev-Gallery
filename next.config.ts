@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   // Images are pre-sized at upload and served from cdn.gallery.mataev.no,
   // so the runtime optimizer is disabled (cheaper on Workers).
   images: { unoptimized: true },
+  turbopack: {
+    root: __dirname,
+  },
 }
 
 export default nextConfig

@@ -38,7 +38,7 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
       row.bytes, row.format, row.color_space, row.camera_make, row.camera_model, row.lens_model,
       row.focal_length, row.f_number, row.exposure_time, row.iso, row.gps_lat, row.gps_lon, row.gps_alt,
       row.place, row.country, row.country_code, row.thumbhash, row.r2_original, row.r2_large, row.r2_thumb,
-      row.published, row.sort_index, row.media_type, row.duration,
+      row.published, row.sort_index, row.media_type, row.duration, row.views,
     )
     .run()
   await upsertTags(db, row.id, tags)
