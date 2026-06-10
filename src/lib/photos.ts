@@ -147,9 +147,9 @@ export async function deletePhoto(db: SqlDb, id: string): Promise<string[]> {
 
 export async function updatePhoto(
   db: SqlDb, id: string,
-  patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published" | "gps_lat" | "gps_lon">>,
+  patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published" | "gps_lat" | "gps_lon" | "gps_alt" | "taken_at">>,
 ): Promise<void> {
-  const ALLOWED = new Set(["caption", "place", "country", "country_code", "published", "gps_lat", "gps_lon"])
+  const ALLOWED = new Set(["caption", "place", "country", "country_code", "published", "gps_lat", "gps_lon", "gps_alt", "taken_at"])
   // Skip keys explicitly set to undefined — Object.keys includes them, and
   // binding undefined makes D1 throw (partial PATCH bodies would 500).
   const fields = Object.keys(patch).filter(

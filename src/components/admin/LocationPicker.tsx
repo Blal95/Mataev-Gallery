@@ -15,6 +15,7 @@ interface SearchHit {
   lat: number
   lon: number
   label: string
+  address: string | null
   place: string | null
   country: string | null
   countryCode: string | null
@@ -38,10 +39,14 @@ export function LocationPicker({
   const [query, setQuery] = useState("")
   const [hits, setHits] = useState<SearchHit[]>([])
   const [searching, setSearching] = useState(false)
+  const [address, setAddress] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
 
   const applyCoords = useCallback(async (lat: number, lon: number, label?: Partial<LocationValue>) => {
+    // Pin moved — any previously fetched street address is stale
+    if (label?.place == null) { setAddress(null); setExpanded(false) }
     if (label?.place != null) {
       onChangeRef.current({
         lat,
@@ -182,6 +187,8 @@ export function LocationPicker({
                   onClick={() => {
                     setQuery("")
                     setHits([])
+                    setAddress(h.address ?? null)
+                    setExpanded(false)
                     void applyCoords(h.lat, h.lon, {
                       lat: h.lat,
                       lon: h.lon,
@@ -201,20 +208,49 @@ export function LocationPicker({
 
       <div ref={mapRef} className="h-36 w-full overflow-hidden rounded border border-line-2" aria-label="Pick location on map" />
 
-      <div className="flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
-        <span className="min-w-0 truncate">
-          {value.lat != null
-            ? `${label || "Pinned"} · ${value.lat.toFixed(4)}°, ${value.lon!.toFixed(4)}°`
-            : "Click map or search — no pin yet"}
-        </span>
-        {value.lat != null && (
-          <button
-            type="button"
-            onClick={() => onChange({ lat: null, lon: null, place: "", country: "", countryCode: "" })}
-            className="shrink-0 text-amber hover:underline"
-          >
-            Clear
-          </button>
+      <div className="space-y-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate">
+            {value.lat != null
+              ? `${label || "Pinned"} · ${value.lat.toFixed(4)}°, ${value.lon!.toFixed(4)}°`
+              : "Click map or search — no pin yet"}
+          </span>
+          {value.lat != null && (
+            <span className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !expanded
+                  setExpanded(next)
+                  if (next && !address) {
+                    fetch(`/api/admin/geocode?lat=${value.lat}&lon=${value.lon}&full=1`)
+                      .then((r) => r.json())
+                      .then((d) => setAddress((d as { address?: string | null }).address ?? null))
+                      .catch(() => {})
+                  }
+                }}
+                className="text-muted-2 hover:text-amber"
+              >
+                {expanded ? "Less ▴" : "Details ▾"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddress(null)
+                  setExpanded(false)
+                  onChange({ lat: null, lon: null, place: "", country: "", countryCode: "" })
+                }}
+                className="text-amber hover:underline"
+              >
+                Clear
+              </button>
+            </span>
+          )}
+        </div>
+        {expanded && value.lat != null && (
+          <p className="whitespace-normal border-l border-line-2 pl-2 normal-case tracking-normal text-muted-2">
+            {address ?? "Loading address…"}
+          </p>
         )}
       </div>
     </div>

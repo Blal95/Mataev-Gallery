@@ -15,7 +15,7 @@ describe("forwardGeocode", () => {
       ],
     })
     const hits = await forwardGeocode("Oslo", fetchMock as unknown as typeof fetch)
-    expect(hits[0]).toMatchObject({ lat: 59.9139, lon: 10.7522, place: "Oslo", countryCode: "NO" })
+    expect(hits[0]).toMatchObject({ lat: 59.9139, lon: 10.7522, place: "Oslo", countryCode: "NO", address: "Oslo, Norway" })
   })
 
   it("returns empty for short query", async () => {

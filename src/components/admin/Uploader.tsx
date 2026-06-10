@@ -6,14 +6,21 @@ import { extractExif } from "@/lib/client/exif"
 import { deriveImages } from "@/lib/client/derive"
 import { computeThumbhash } from "@/lib/client/thumbhash"
 import { extractPoster } from "@/lib/client/poster"
+import { readVideoMeta } from "@/lib/client/videoGps"
+import { LocationSearchInput, type PickedLocation } from "./LocationSearchInput"
 
 interface Pending {
   file: File
   preview: string          // object URL — for <img> (photos) or <video> (videos)
   caption: string
   tags: string
-  exif: Awaited<ReturnType<typeof extractExif>> | null  // null for videos
+  exif: Awaited<ReturnType<typeof extractExif>> | null  // GPS/date-only shape for videos
   place: string
+  country: string          // from reverse geocode; kept separate so flags work
+  countryCode: string
+  pickedLat: number | null // coords chosen via search — EXIF GPS wins when present
+  pickedLon: number | null
+  address: string | null   // full address line of a picked search hit
   status: "ready" | "uploading" | "done" | "error"
   errorMsg: string | null
   mediaType: "photo" | "video"
@@ -35,6 +42,24 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
 
   const MAX_ITEMS = 10
 
+  /** Reverse geocode in the background and prefill empty location fields. */
+  function prefillPlace(idx: number, lat: number, lon: number) {
+    fetch(`/api/admin/geocode?lat=${lat}&lon=${lon}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const typed = data as { result?: { place?: string | null; country?: string | null; countryCode?: string | null } }
+        const r = typed.result
+        if (!r) return
+        setItems((prev) => prev.map((it, i) => i === idx ? {
+          ...it,
+          place: it.place || r.place || "",
+          country: r.country ?? "",
+          countryCode: r.countryCode ?? "",
+        } : it))
+      })
+      .catch(() => {})
+  }
+
   async function onFiles(files: FileList | null) {
     if (!files) return
     const slots = MAX_ITEMS - itemsRef.current.length
@@ -49,7 +74,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         // Add placeholder immediately so the user sees something
         setItems((prev) => [...prev, {
           file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
-          exif: null, place: "", status: "ready", errorMsg: null,
+          exif: null, place: "", country: "", countryCode: "", pickedLat: null, pickedLon: null, address: null, status: "ready", errorMsg: null,
           mediaType: "video", duration: null, posterBlob: null, posterUrl: null,
         }])
         // Extract poster + duration in the background
@@ -61,6 +86,21 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
             ))
           })
           .catch(() => {})
+        // QuickTime location + capture time (exifr can't read video containers)
+        readVideoMeta(raw)
+          .then(({ gps, takenAt }) => {
+            if (!gps && !takenAt) return
+            setItems((prev) => prev.map((it, i) => i === idx ? {
+              ...it,
+              exif: {
+                takenAt, cameraMake: null, cameraModel: null, lens: null,
+                focal: null, fNumber: null, exposure: null, iso: null,
+                lat: gps?.lat ?? null, lon: gps?.lon ?? null, alt: gps?.alt ?? null, colorSpace: null,
+              },
+            } : it))
+            if (gps) prefillPlace(idx, gps.lat, gps.lon)
+          })
+          .catch(() => {})
       } else {
         const exif = await extractExif(raw)
         let file: File
@@ -70,34 +110,65 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
           const msg = err instanceof Error ? (err.message || err.name) : String(err)
           setItems((prev) => [...prev, {
             file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
-            exif, place: "", status: "error", errorMsg: msg,
+            exif, place: "", country: "", countryCode: "", pickedLat: null, pickedLon: null, address: null, status: "error", errorMsg: msg,
             mediaType: "photo", duration: null, posterBlob: null, posterUrl: null,
           }])
           continue
         }
         setItems((prev) => [...prev, {
           file, preview: URL.createObjectURL(file), caption: "", tags: "",
-          exif, place: "", status: "ready", errorMsg: null,
+          exif, place: "", country: "", countryCode: "", pickedLat: null, pickedLon: null, address: null, status: "ready", errorMsg: null,
           mediaType: "photo", duration: null, posterBlob: null, posterUrl: null,
         }])
-        if (exif.lat != null && exif.lon != null) {
-          fetch(`/api/admin/geocode?lat=${exif.lat}&lon=${exif.lon}`)
-            .then((r) => r.json())
-            .then((data) => {
-              const typed = data as { result?: { place?: string | null; country?: string | null } }
-              const r = typed.result
-              if (!r) return
-              const label = [r.place, r.country].filter(Boolean).join(", ")
-              if (label) setItems((prev) => prev.map((it, i) => i === idx ? { ...it, place: label } : it))
-            })
-            .catch(() => {})
-        }
+        if (exif.lat != null && exif.lon != null) prefillPlace(idx, exif.lat, exif.lon)
       }
     }
   }
 
   function patch(i: number, p: Partial<Pending>) {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...p } : it)))
+  }
+
+  function locationOf(it: Pending): PickedLocation {
+    return {
+      place: it.place,
+      country: it.country,
+      countryCode: it.countryCode,
+      lat: it.exif?.lat ?? it.pickedLat,
+      lon: it.exif?.lon ?? it.pickedLon,
+      address: it.address,
+    }
+  }
+
+  function setLocation(i: number, v: PickedLocation) {
+    patch(i, {
+      place: v.place,
+      country: v.country,
+      countryCode: v.countryCode,
+      pickedLat: v.lat,
+      pickedLon: v.lon,
+      address: v.address,
+    })
+  }
+
+  /** Copy one item's location onto every other pending item (same shoot). */
+  function applyLocationToAll(i: number) {
+    const src = itemsRef.current[i]
+    if (!src) return
+    const loc = locationOf(src)
+    setItems((prev) => prev.map((it, idx) => {
+      if (idx === i || it.status === "done" || it.status === "uploading") return it
+      return {
+        ...it,
+        place: loc.place,
+        country: loc.country,
+        countryCode: loc.countryCode,
+        address: loc.address,
+        // own EXIF GPS stays authoritative; copied coords only fill gaps
+        pickedLat: it.exif?.lat != null ? it.pickedLat : loc.lat,
+        pickedLon: it.exif?.lon != null ? it.pickedLon : loc.lon,
+      }
+    }))
   }
 
   async function upload(i: number) {
@@ -150,10 +221,12 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         fNumber: it.exif?.fNumber ?? null,
         exposure: it.exif?.exposure ?? null,
         iso: it.exif?.iso ?? null,
-        lat: it.exif?.lat ?? null,
-        lon: it.exif?.lon ?? null,
+        lat: it.exif?.lat ?? it.pickedLat,
+        lon: it.exif?.lon ?? it.pickedLon,
         alt: it.exif?.alt ?? null,
         place: it.place || null,
+        country: it.country || null,
+        countryCode: it.countryCode || null,
         thumbhash,
         mediaType: it.mediaType,
         duration: it.duration,
@@ -261,7 +334,16 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
             <div className="min-w-0 flex-1 space-y-2">
               <input value={it.caption} onChange={(e) => patch(i, { caption: e.target.value })} placeholder="Caption" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-sm text-text outline-none focus:border-cyan/50" />
               <input value={it.tags} onChange={(e) => patch(i, { tags: e.target.value })} placeholder="#tags #separated" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 font-mono text-xs text-text outline-none focus:border-cyan/50" />
-              <input value={it.place} onChange={(e) => patch(i, { place: e.target.value })} placeholder="Location" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-xs text-text outline-none focus:border-cyan/50" />
+              <LocationSearchInput value={locationOf(it)} onChange={(v) => setLocation(i, v)} />
+              {items.length > 1 && (it.place || it.country || it.exif?.lat != null || it.pickedLat != null) && (
+                <button
+                  type="button"
+                  onClick={() => applyLocationToAll(i)}
+                  className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted-2 hover:text-amber"
+                >
+                  Apply location to all ↓
+                </button>
+              )}
               <div className="flex items-center gap-3">
                 <button onClick={() => upload(i)} disabled={it.status === "uploading" || it.status === "done"} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">
                   {it.status === "done" ? "Posted ✓" : it.status === "uploading" ? "Posting…" : "Post"}

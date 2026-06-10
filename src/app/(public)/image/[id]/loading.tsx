@@ -19,15 +19,17 @@ export default function Loading() {
       </div>
 
       {/* center stage skeleton */}
-      <div className="relative flex flex-1 items-center justify-center px-4">
-        <div className="h-full max-h-[80vh] w-full max-w-3xl animate-pulse rounded bg-line/30" />
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4">
+        <div className="h-full max-h-[70vh] w-full max-w-3xl animate-pulse rounded bg-line/30" />
       </div>
 
-      {/* filmstrip skeleton */}
-      <div className="flex gap-2 border-t border-line bg-bg px-4 py-3 overflow-hidden">
-        {Array.from({ length: 16 }).map((_, i) => (
-          <span key={i} className="h-[52px] w-[68px] shrink-0 animate-pulse rounded-[2px] bg-line-2/30" />
-        ))}
+      {/* caption strip skeleton */}
+      <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 lg:hidden">
+        <span className="mb-3 block h-5 w-2/3 animate-pulse rounded bg-line-2/40" />
+        <div className="flex items-center justify-between">
+          <span className="h-3 w-32 animate-pulse rounded bg-line-2/30" />
+          <span className="h-3 w-20 animate-pulse rounded bg-line-2/30" />
+        </div>
       </div>
 
       <style>{`

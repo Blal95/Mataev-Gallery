@@ -5,6 +5,8 @@ import { useEffect, useState } from "react"
 const SHORTCUTS = [
   { key: "← / →", desc: "Navigate" },
   { key: "I", desc: "Details" },
+  { key: "+ / −", desc: "Zoom" },
+  { key: "0", desc: "Reset zoom" },
   { key: "Esc", desc: "Close / dismiss" },
   { key: "?", desc: "Shortcuts" },
 ]

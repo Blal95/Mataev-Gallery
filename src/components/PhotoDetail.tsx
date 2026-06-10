@@ -65,7 +65,34 @@ export function PhotoDetail({
   const pinchStartZoom = useRef(1)
   const panStart = useRef<{ tx: number; ty: number; px: number; py: number } | null>(null)
   const lastTapTime = useRef(0)
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+
+  // Discrete zoom changes (double-tap, keys, reset) animate; continuous
+  // gestures (pinch, wheel, drag) must track the pointer with no easing.
+  const [smoothZoom, setSmoothZoom] = useState(true)
+
+  const applyZoom = (z: number, px: number, py: number, smooth = false) => {
+    setSmoothZoom(smooth)
+    zoomRef.current = z
+    panRef.current = { x: px, y: py }
+    setZoom(z); setPanX(px); setPanY(py)
+  }
+  const resetZoom = () => applyZoom(1, 0, 0, true)
+
+  /** Zoom anchored at a viewport point so it stays put under cursor/finger. */
+  const zoomAt = (clientX: number, clientY: number, z1: number, smooth = false) => {
+    const stage = stageRef.current
+    if (!stage) return
+    if (z1 <= 1.001) { resetZoom(); return }
+    const r = stage.getBoundingClientRect()
+    const cx = clientX - (r.left + r.width / 2)
+    const cy = clientY - (r.top + r.height / 2)
+    const z0 = zoomRef.current
+    const px = cx - (z1 / z0) * (cx - panRef.current.x)
+    const py = cy - (z1 / z0) * (cy - panRef.current.y)
+    applyZoom(z1, px, py, smooth)
+  }
   if (seenId !== photo.id) {
     setSeenId(photo.id); setTransitioning(false); setShowComments(false)
     zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
@@ -105,21 +132,11 @@ export function PhotoDetail({
       pinchStartZoom.current = zoomRef.current
       touchStartX.current = null
       touchStartY.current = null
+      if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null }
       return
     }
-    const now = Date.now()
-    if (now - lastTapTime.current < 300 && zoomRef.current > 1) {
-      zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
-      setZoom(1); setPanX(0); setPanY(0)
-      lastTapTime.current = 0
-      return
-    }
-    lastTapTime.current = now
     if (zoomRef.current > 1) {
       panStart.current = { tx: e.touches[0].clientX, ty: e.touches[0].clientY, px: panRef.current.x, py: panRef.current.y }
-      touchStartX.current = null
-      touchStartY.current = null
-      return
     }
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
@@ -128,22 +145,69 @@ export function PhotoDetail({
   const onTouchEnd = (e: React.TouchEvent) => {
     if (pinchStartDist.current != null) {
       pinchStartDist.current = null
-      if (zoomRef.current <= 1.05) {
-        zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
-        setZoom(1); setPanX(0); setPanY(0)
-      }
+      if (zoomRef.current <= 1.05) resetZoom()
       return
     }
     panStart.current = null
-    if (zoomRef.current > 1) return
     if (touchStartX.current == null || touchStartY.current == null) return
-    const dx = e.changedTouches[0].clientX - touchStartX.current
-    const dy = e.changedTouches[0].clientY - touchStartY.current
+    const endX = e.changedTouches[0].clientX
+    const endY = e.changedTouches[0].clientY
+    const dx = endX - touchStartX.current
+    const dy = endY - touchStartY.current
     touchStartX.current = null
     touchStartY.current = null
+
+    // Tap: little movement. Double-tap toggles zoom; single tap (after the
+    // double-tap window) toggles the info sheet.
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+      // Taps on the video element belong to play/pause, not the info sheet
+      if ((e.target as HTMLElement).tagName === "VIDEO") return
+      const now = Date.now()
+      if (now - lastTapTime.current < 300) {
+        lastTapTime.current = 0
+        if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null }
+        if (zoomRef.current > 1) resetZoom()
+        else zoomAt(endX, endY, 2.5, true)
+        return
+      }
+      lastTapTime.current = now
+      tapTimer.current = setTimeout(() => {
+        tapTimer.current = null
+        toggleInfo()
+      }, 280)
+      return
+    }
+
+    // Swipe nav only when not zoomed (panning owns the gesture while zoomed)
+    if (zoomRef.current > 1) return
     if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
     if (dx < 0 && next) goto(next.slug)
     if (dx > 0 && prev) goto(prev.slug)
+  }
+
+  // Mouse: drag pans while zoomed, double-click toggles zoom, wheel zooms
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (zoomRef.current <= 1 || e.button !== 0) return
+    e.preventDefault()
+    const start = { tx: e.clientX, ty: e.clientY, px: panRef.current.x, py: panRef.current.y }
+    const move = (ev: MouseEvent) => {
+      setSmoothZoom(false)
+      panRef.current = { x: start.px + (ev.clientX - start.tx), y: start.py + (ev.clientY - start.ty) }
+      setPanX(panRef.current.x); setPanY(panRef.current.y)
+    }
+    const up = () => {
+      window.removeEventListener("mousemove", move)
+      window.removeEventListener("mouseup", up)
+    }
+    window.addEventListener("mousemove", move)
+    window.addEventListener("mouseup", up)
+  }
+
+  const onDoubleClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === "VIDEO") return
+    e.preventDefault()
+    if (zoomRef.current > 1) resetZoom()
+    else zoomAt(e.clientX, e.clientY, 2.5, true)
   }
 
   const togglePlayback = () => {
@@ -163,6 +227,9 @@ export function PhotoDetail({
       if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
+      if (e.key === "+" || e.key === "=") zoomAt(window.innerWidth / 2, window.innerHeight / 2, Math.min(5, zoomRef.current * 1.4), true)
+      if (e.key === "-") zoomAt(window.innerWidth / 2, window.innerHeight / 2, zoomRef.current / 1.4, true)
+      if (e.key === "0") resetZoom()
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -181,6 +248,20 @@ export function PhotoDetail({
       style.overscrollBehavior = prevOverscroll
     }
   }, [])
+
+  // Reset any page-level pinch zoom carried over from the gallery and keep
+  // page zoom locked while the detail view is open — zooming in here is the
+  // custom transform kind. Restored on close so the feed stays zoomable.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
+    if (!meta) return
+    const original = meta.content
+    meta.content = "width=device-width, initial-scale=1, maximum-scale=1"
+    return () => { meta.content = original }
+  }, [])
+
+  // Cancel a pending single-tap action on unmount
+  useEffect(() => () => { if (tapTimer.current) clearTimeout(tapTimer.current) }, [])
 
   // Persist info panel open/close state across navigation
   useEffect(() => {
@@ -224,28 +305,58 @@ export function PhotoDetail({
   useEffect(() => {
     const stage = stageRef.current
     if (!stage) return
+    const zoomAtPoint = (clientX: number, clientY: number, z1: number) => {
+      setSmoothZoom(false)
+      if (z1 <= 1.001) {
+        zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
+        setZoom(1); setPanX(0); setPanY(0)
+        return
+      }
+      const r = stage.getBoundingClientRect()
+      const cx = clientX - (r.left + r.width / 2)
+      const cy = clientY - (r.top + r.height / 2)
+      const z0 = zoomRef.current
+      const px = cx - (z1 / z0) * (cx - panRef.current.x)
+      const py = cy - (z1 / z0) * (cy - panRef.current.y)
+      zoomRef.current = z1; panRef.current = { x: px, y: py }
+      setZoom(z1); setPanX(px); setPanY(py)
+    }
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && pinchStartDist.current != null) {
         e.preventDefault()
         const dx = e.touches[1].clientX - e.touches[0].clientX
         const dy = e.touches[1].clientY - e.touches[0].clientY
         const dist = Math.sqrt(dx * dx + dy * dy)
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2
         const newZoom = Math.max(1, Math.min(5, pinchStartZoom.current * (dist / pinchStartDist.current)))
-        zoomRef.current = newZoom
-        setZoom(newZoom)
-        if (newZoom <= 1) { panRef.current = { x: 0, y: 0 }; setPanX(0); setPanY(0) }
+        zoomAtPoint(midX, midY, newZoom)
         return
       }
       if (e.touches.length === 1 && zoomRef.current > 1 && panStart.current) {
         e.preventDefault()
+        setSmoothZoom(false)
         const nx = panStart.current.px + (e.touches[0].clientX - panStart.current.tx)
         const ny = panStart.current.py + (e.touches[0].clientY - panStart.current.ty)
         panRef.current = { x: nx, y: ny }
         setPanX(nx); setPanY(ny)
+        return
       }
+      // Not zoomed: swallow vertical drags so the page never scrolls or
+      // rubber-bands while a photo is open.
+      if (e.touches.length === 1) e.preventDefault()
+    }
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const z1 = Math.max(1, Math.min(5, zoomRef.current * Math.exp(-e.deltaY * 0.0022)))
+      zoomAtPoint(e.clientX, e.clientY, z1)
     }
     stage.addEventListener("touchmove", handleTouchMove, { passive: false })
-    return () => stage.removeEventListener("touchmove", handleTouchMove)
+    stage.addEventListener("wheel", handleWheel, { passive: false })
+    return () => {
+      stage.removeEventListener("touchmove", handleTouchMove)
+      stage.removeEventListener("wheel", handleWheel)
+    }
   }, [])
 
   // Pause + reset when navigating away
@@ -291,7 +402,7 @@ export function PhotoDetail({
   const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
 
   return (
-    <div className="flex min-h-dvh w-full bg-bg sm:h-full sm:overflow-hidden">
+    <div className="flex h-dvh w-full overflow-hidden bg-bg">
       {/* Progress bar */}
       <div
         aria-hidden
@@ -310,9 +421,12 @@ export function PhotoDetail({
 
           {/* Caption — primary read */}
           {photo.caption && (
-            <p className="mb-6 font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text">
-              {photo.caption}
-            </p>
+            <div className="mb-6">
+              <p className="mb-2 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
+              <p className="font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text">
+                {photo.caption}
+              </p>
+            </div>
           )}
 
           {/* When */}
@@ -423,10 +537,10 @@ export function PhotoDetail({
       </aside>
 
       {/* Right column — stage + mobile chrome */}
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col sm:h-full sm:min-h-0 sm:overflow-hidden">
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="relative z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <div className="relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber lg:invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -478,16 +592,17 @@ export function PhotoDetail({
         </div>
       </div>
 
-      {/* Stage — auto height on mobile (image fills width), flex-1 on desktop */}
+      {/* Stage — fills remaining viewport; the whole frame is always contained,
+          so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative sm:min-h-0 sm:flex-1"
+        className="relative min-h-0 flex-1 touch-none select-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
+        onMouseDown={onMouseDown}
+        onDoubleClick={onDoubleClick}
       >
-        <div className="absolute inset-0" onClick={toggleInfo} aria-hidden />
-
-        <div className="pointer-events-none relative flex justify-center sm:h-full sm:items-center sm:px-14">
+        <div className="pointer-events-none relative flex h-full items-center justify-center px-2 sm:px-14">
           {/* Thumbhash blur placeholder */}
           {placeholder && !isVideo && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -514,8 +629,8 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto w-full cursor-pointer object-contain sm:max-h-full sm:w-auto transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
-              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
+              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -524,10 +639,10 @@ export function PhotoDetail({
               alt={photo.caption ?? `Frame ${index + 1}`}
               width={photo.width}
               height={photo.height}
-              onClick={toggleInfo}
+              draggable={false}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto relative w-full cursor-pointer object-contain sm:max-h-full sm:w-auto sm:shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${transitioning ? "opacity-30" : "opacity-100"}`}
-              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
+              className={`pointer-events-auto relative max-h-full max-w-full object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
+              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
             />
           )}
         </div>
@@ -567,11 +682,14 @@ export function PhotoDetail({
 
       {/* Caption + location + date — directly below image (mobile/tablet) */}
       {!info && (photo.caption || locationLine || date) && (
-        <div className="relative z-20 bg-bg px-5 pb-6 pt-4 sm:px-7 lg:hidden">
+        <div className="relative z-20 shrink-0 bg-bg px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6 sm:pt-4 lg:hidden">
           {photo.caption && (
-            <p className="mb-3 font-serif text-[21px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
-              {photo.caption}
-            </p>
+            <>
+              <p className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
+              <p className="mb-3 line-clamp-2 font-serif text-[19px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
+                {photo.caption}
+              </p>
+            </>
           )}
           {(locationLine || date) && (
             <div className="flex items-center justify-between gap-3">
@@ -600,24 +718,37 @@ export function PhotoDetail({
         </div>
       )}
 
-      {/* Info panel — fixed bottom sheet on mobile/tablet; desktop uses sidebar */}
+      {/* Info sheet — in flow below the stage (mobile/tablet) so opening it
+          shrinks the stage and the whole frame stays visible; desktop uses sidebar */}
       <div
         aria-hidden={!info}
-        className={`fixed inset-x-0 bottom-0 z-40 grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:static sm:inset-x-auto sm:bottom-auto sm:z-auto lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
+        className={`relative z-40 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-line-2 bg-bg-2/95 backdrop-blur-md">
+          <div className="border-t border-line-2 bg-bg-2 pb-[env(safe-area-inset-bottom)]">
+
+            {/* Grabber — tap to dismiss */}
+            <button
+              onClick={() => setInfo(false)}
+              aria-label="Hide details"
+              className="flex w-full items-center justify-center pb-1.5 pt-2.5"
+            >
+              <span aria-hidden className="h-1 w-9 rounded-full bg-line-2" />
+            </button>
 
             {/* Main metadata — scrollable, capped height */}
             <div
-              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-6 sm:px-6"
-              style={{ maxHeight: "min(55vh, 380px)" }}
+              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-1 sm:px-6"
+              style={{ maxHeight: "min(42vh, 340px)" }}
             >
               {/* Caption + location + date — repeated here so it never hides under the sheet */}
               {photo.caption && (
-                <p className="mb-3 font-serif text-[19px] italic leading-[1.35] text-text">
-                  {photo.caption}
-                </p>
+                <>
+                  <p className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
+                  <p className="mb-3 font-serif text-[19px] italic leading-[1.35] text-text">
+                    {photo.caption}
+                  </p>
+                </>
               )}
               {(locationLine || date) && (
                 <div className="mb-5 flex items-center justify-between gap-3">
@@ -712,7 +843,7 @@ export function PhotoDetail({
               <div className="overflow-hidden">
                 <div
                   className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-6 sm:px-6"
-                  style={{ maxHeight: "min(35vh, 280px)" }}
+                  style={{ maxHeight: "min(25vh, 220px)" }}
                 >
                   {showComments && <PhotoComments photoId={photo.id} />}
                 </div>
