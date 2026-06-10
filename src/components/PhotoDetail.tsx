@@ -3,12 +3,10 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { ExposureStrip } from "./ExposureStrip"
-import { Filmstrip } from "./Filmstrip"
+import { LocationMap } from "./LocationMap"
 import { PhotoComments } from "./PhotoComments"
-import Logo from "./Logo"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
-import { flagEmoji, flagUrl, formatDuration, formatBytes } from "@/lib/format"
+import { flagEmoji, flagUrl, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -20,16 +18,36 @@ function Icon({ d, className }: { d: string; className?: string }) {
   )
 }
 
+/** Archive-card section: micro eyebrow label over content, hairline rule above. */
+function Section({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`border-t border-line pt-4 ${className}`}>
+      <p className="mb-2.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">{label}</p>
+      {children}
+    </section>
+  )
+}
+
+/** Labelled spec value for the 2-col camera/file grids. */
+function SpecCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-0.5 font-mono text-[8.5px] uppercase tracking-[0.18em] text-muted/50">{label}</p>
+      <p className="font-mono text-[11.5px] tabular-nums tracking-[0.04em] text-text/90">{value}</p>
+    </div>
+  )
+}
+
 export function PhotoDetail({
   photo, neighbours, index, total, asModal,
 }: {
   photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; asModal: boolean
 }) {
   const router = useRouter()
-  const [info, setInfo] = useState(() => {
-    if (typeof window === "undefined") return false
-    return sessionStorage.getItem("detail-info") === "1"
-  })
+  const [info, setInfo] = useState(false)
+  useEffect(() => {
+    setInfo(sessionStorage.getItem("detail-info") === "1")
+  }, [])
   const [transitioning, setTransitioning] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -68,6 +86,12 @@ export function PhotoDetail({
   const close = () => {
     if (asModal) router.back()
     else router.push("/")
+  }
+
+  // Info sheet only exists below lg — desktop has the permanent sidebar
+  const toggleInfo = () => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) return
+    setInfo((v) => !v)
   }
 
   const goto = (slug: string) => {
@@ -139,7 +163,7 @@ export function PhotoDetail({
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
       if (e.key === "ArrowLeft" && prev) goto(prev.slug)
       if (e.key === "ArrowRight" && next) goto(next.slug)
-      if (e.key === "i" || e.key === "I") setInfo((v) => !v)
+      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
     }
@@ -228,9 +252,31 @@ export function PhotoDetail({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo.id])
 
-  const date = photo.takenAt
-    ? new Date(photo.takenAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
+  const takenDate = photo.takenAt ? new Date(photo.takenAt) : null
+  const date = takenDate
+    ? takenDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()
     : null
+  const time = takenDate
+    ? takenDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : null
+  const coords = photo.lat != null && photo.lon != null
+    ? `${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)}`
+    : null
+
+  const cameraSpecs = [
+    { label: "Focal", value: formatFocal(photo.focal) },
+    { label: "Aperture", value: formatAperture(photo.fNumber) },
+    { label: "Shutter", value: formatExposure(photo.exposure) },
+    { label: "ISO", value: photo.iso != null ? String(photo.iso) : null },
+  ].filter((s): s is { label: string; value: string } => s.value != null)
+
+  const fileSpecs = [
+    { label: "Duration", value: isVideo ? formatDuration(photo.duration) : null },
+    { label: "Size", value: photo.width > 0 ? `${photo.width} × ${photo.height}` : null },
+    { label: "Format", value: photo.format ? photo.format.toUpperCase() : null },
+    { label: "Weight", value: formatBytes(photo.bytes) },
+    { label: "Views", value: photo.views > 0 ? photo.views.toLocaleString() : null },
+  ].filter((s): s is { label: string; value: string } => s.value != null)
 
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
@@ -239,7 +285,7 @@ export function PhotoDetail({
   const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
 
   return (
-    <div className="flex h-full min-h-dvh w-full flex-col overflow-hidden bg-bg">
+    <div className="flex min-h-dvh w-full bg-bg sm:h-full sm:overflow-hidden">
       {/* Progress bar */}
       <div
         aria-hidden
@@ -247,17 +293,145 @@ export function PhotoDetail({
         style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
       />
 
+      {/* Desktop sidebar — always visible on lg+, all metadata lives here */}
+      <aside className="relative z-30 hidden w-[340px] shrink-0 border-r border-line bg-bg-2/50 lg:flex lg:flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6">
+          {/* Frame counter */}
+          <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber">
+            Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
+            <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+          </p>
+
+          {/* Caption — primary read */}
+          {photo.caption && (
+            <p className="mb-6 font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text">
+              {photo.caption}
+            </p>
+          )}
+
+          {/* When */}
+          {date && (
+            <Section label="When" className="mb-5">
+              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-text/90">
+                {date}{time ? <span className="text-muted-2"> · {time}</span> : null}
+              </p>
+            </Section>
+          )}
+
+          {/* Where */}
+          {(locationLine || coords) && (
+            <Section label="Where" className="mb-5">
+              {locationLine && (
+                <a
+                  href={photo.lat != null && photo.lon != null
+                    ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
+                    : "/atlas"}
+                  className="group/loc flex items-center gap-1.5"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[11px] w-[11px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-text/90 transition-colors group-hover/loc:text-amber">
+                    {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
+                  </span>
+                </a>
+              )}
+              {photo.lat != null && photo.lon != null && (
+                <div className="mt-3 overflow-hidden rounded-lg border border-line-2">
+                  <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" />
+                </div>
+              )}
+              {coords && (
+                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60">{coords}</p>
+              )}
+            </Section>
+          )}
+
+          {/* Camera */}
+          {!isVideo && (photo.camera || photo.lens || cameraSpecs.length > 0) && (
+            <Section label="Camera" className="mb-5">
+              {photo.camera && (
+                <p className="font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-text/90">{photo.camera}</p>
+              )}
+              {photo.lens && (
+                <p className="mt-0.5 font-mono text-[9.5px] uppercase leading-snug tracking-[0.08em] text-muted-2">{photo.lens}</p>
+              )}
+              {cameraSpecs.length > 0 && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
+                  {cameraSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
+                </div>
+              )}
+            </Section>
+          )}
+
+          {/* File */}
+          {fileSpecs.length > 0 && (
+            <Section label="File" className="mb-5">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
+              </div>
+            </Section>
+          )}
+
+          {/* Tags */}
+          {photo.tags.length > 0 && (
+            <Section label="Tags" className="mb-5">
+              <div className="flex flex-wrap gap-1.5">
+                {photo.tags.map((t) => (
+                  <Link
+                    key={t}
+                    href={`/t/${t}`}
+                    className="rounded-full border border-amber/25 px-3 py-1.5 font-mono text-[10px] text-amber transition-colors hover:bg-amber/10"
+                  >
+                    #{t}
+                  </Link>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Full size + comments */}
+          <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
+            <a
+              href={photo.url.original}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
+            >
+              Full size ↗
+            </a>
+            <button
+              onClick={() => setShowComments((v) => !v)}
+              className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
+            >
+              {showComments ? "Hide comments" : "Comments →"}
+            </button>
+          </div>
+          {showComments && (
+            <div className="mt-4">
+              <PhotoComments photoId={photo.id} />
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Right column — stage + mobile chrome */}
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col sm:h-full sm:min-h-0 sm:overflow-hidden">
+
       {/* Header */}
       <div className="relative z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber lg:invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
         </span>
         {!info && (
           <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
             <span className="text-muted-2">← →</span> previous / next
-            <span className="mx-2 text-line-2">·</span>
-            <span className="text-muted-2">I</span> details
+            <span className="lg:hidden">
+              <span className="mx-2 text-line-2">·</span>
+              <span className="text-muted-2">I</span> details
+            </span>
           </p>
         )}
         <div className="flex shrink-0 items-center gap-1">
@@ -286,9 +460,9 @@ export function PhotoDetail({
             </>
           )}
           <button
-            onClick={() => setInfo((v) => !v)}
+            onClick={toggleInfo}
             aria-pressed={info}
-            className={`mr-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
+            className={`mr-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
           >
             <Icon d="M12 16v-5M12 8h.01" className="h-3.5 w-3.5" /> Info
           </button>
@@ -298,17 +472,17 @@ export function PhotoDetail({
         </div>
       </div>
 
-      {/* Stage */}
+      {/* Stage — auto height on mobile (image fills width), flex-1 on desktop */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1"
+        className="relative sm:min-h-0 sm:flex-1"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="absolute inset-0" onClick={() => setInfo((v) => !v)} aria-hidden />
+        <div className="absolute inset-0" onClick={toggleInfo} aria-hidden />
 
-        <div className="pointer-events-none relative flex h-full items-center justify-center px-4 sm:px-14">
-          {/* Thumbhash blur placeholder — fades out when large media finishes loading */}
+        <div className="pointer-events-none relative flex justify-center sm:h-full sm:items-center sm:px-14">
+          {/* Thumbhash blur placeholder */}
           {placeholder && !isVideo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -316,7 +490,7 @@ export function PhotoDetail({
               alt=""
               aria-hidden
               style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
-              className={`pointer-events-none absolute max-h-full max-w-full scale-[1.02] object-contain blur-[14px] transition-opacity duration-500 ${largeLoaded ? "opacity-0" : "opacity-90"}`}
+              className={`pointer-events-none absolute inset-0 h-full w-full object-cover blur-[18px] transition-opacity duration-500 ${largeLoaded ? "opacity-0" : "opacity-80"}`}
             />
           )}
           {isVideo ? (
@@ -334,7 +508,7 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              className={`pointer-events-auto w-full cursor-pointer object-contain sm:max-h-full sm:w-auto transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
               style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
             />
           ) : (
@@ -344,19 +518,12 @@ export function PhotoDetail({
               alt={photo.caption ?? `Frame ${index + 1}`}
               width={photo.width}
               height={photo.height}
-              onClick={() => setInfo((v) => !v)}
+              onClick={toggleInfo}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto relative max-h-full max-w-full cursor-pointer object-contain shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${transitioning ? "opacity-30" : "opacity-100"}`}
+              className={`pointer-events-auto relative w-full cursor-pointer object-contain sm:max-h-full sm:w-auto sm:shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-opacity duration-300 ${transitioning ? "opacity-30" : "opacity-100"}`}
               style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: zoom === 1 ? "transform 0.25s ease" : "none", transformOrigin: "center center" }}
             />
           )}
-        </div>
-
-
-        {/* Branding seal */}
-        <div className={`pointer-events-none absolute bottom-3 right-3 z-10 flex items-center gap-1.5 transition-opacity duration-300 sm:bottom-5 sm:right-6 ${info ? "opacity-0" : "opacity-100"}`}>
-          <Logo iconOnly className="h-5 w-auto text-amber/55 sm:h-6" title="Mataev" />
-          <span className="font-mono text-[8.5px] uppercase tracking-[0.28em] text-muted/70 mix-blend-screen sm:text-[9px]">Mataev</span>
         </div>
 
         {/* Nav arrows */}
@@ -392,10 +559,41 @@ export function PhotoDetail({
         </div>
       )}
 
-      {/* Info panel */}
+      {/* Museum placard — centered caption + meta directly below image (mobile/tablet) */}
+      {!info && (photo.caption || locationLine || date) && (
+        <div className="relative z-20 bg-bg px-6 pb-7 pt-5 text-center lg:hidden">
+          {photo.caption && (
+            <p className="mx-auto mb-2.5 max-w-[34ch] font-serif text-[21px] italic leading-[1.35] tracking-[-0.01em] text-text sm:text-[23px]">
+              {photo.caption}
+            </p>
+          )}
+          {(locationLine || date) && (
+            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+              {locationLine && (
+                <a
+                  href={photo.lat != null && photo.lon != null
+                    ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
+                    : "/atlas"}
+                  className="inline-flex items-center gap-1.5 py-1 transition-colors hover:text-amber"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50" aria-hidden>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                  {flag ? <span>{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="inline-block h-[10px] w-auto" /> : null}
+                  {locationLine}
+                </a>
+              )}
+              {locationLine && date && <span aria-hidden className="text-line-2">·</span>}
+              {date && <span className="py-1 text-muted/70">{date}</span>}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Info panel — fixed bottom sheet on mobile/tablet; desktop uses sidebar */}
       <div
         aria-hidden={!info}
-        className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${info ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+        className={`fixed inset-x-0 bottom-0 z-40 grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] sm:static sm:inset-x-auto sm:bottom-auto sm:z-auto lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
           <div className="border-t border-line-2 bg-bg-2/95 backdrop-blur-md">
@@ -405,68 +603,78 @@ export function PhotoDetail({
               className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-6 sm:px-6"
               style={{ maxHeight: "min(55vh, 380px)" }}
             >
-              {/* Caption */}
+              {/* Caption + location + date — repeated here so it never hides under the sheet */}
               {photo.caption && (
-                <p className="mb-5 font-serif text-[19px] italic leading-snug text-text sm:text-[21px]">
+                <p className="mb-3 font-serif text-[19px] italic leading-[1.35] text-text">
                   {photo.caption}
                 </p>
               )}
-
-              {/* Location + Date — one row */}
               {(locationLine || date) && (
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="mb-5 flex items-center justify-between gap-3">
                   {locationLine ? (
                     <a
                       href={photo.lat != null && photo.lon != null
                         ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
                         : "/atlas"}
-                      className="flex items-center gap-2 group/loc"
+                      className="group/loc flex min-w-0 items-center gap-1.5"
                     >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-amber/60 transition-colors group-hover/loc:text-amber" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-[11px] w-[11px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                       </svg>
-                      <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-2 transition-colors group-hover/loc:text-amber">
-                        {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="inline-block h-[11px] w-auto align-middle mr-1" /> : null}{locationLine}
+                      <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors group-hover/loc:text-amber">
+                        {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
                       </span>
                     </a>
                   ) : <span />}
-                  {(date || photo.views > 0) && (
-                    <div className="flex flex-col items-end gap-0.5">
-                      {date && <span className="font-mono text-[11px] uppercase tracking-[0.10em] text-muted">{date}</span>}
-                      {photo.views > 0 && <span className="font-mono text-[9px] uppercase tracking-[0.10em] text-muted/60">{photo.views.toLocaleString()} views</span>}
-                    </div>
+                  {date && (
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
+                      {date}{time ? ` · ${time}` : ""}
+                    </span>
                   )}
                 </div>
               )}
 
-              {/* Metadata */}
-              {isVideo ? (
-                <div className="mb-5 font-mono text-[11px] uppercase leading-[1.8] tracking-[0.08em] text-muted-2">
-                  {formatDuration(photo.duration) && (
-                    <span className="mr-3 text-cyan">{formatDuration(photo.duration)}</span>
+              {/* Camera */}
+              {!isVideo && (photo.camera || photo.lens || cameraSpecs.length > 0) && (
+                <Section label="Camera" className="mb-5">
+                  {photo.camera && (
+                    <p className="font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-text/90">{photo.camera}</p>
                   )}
-                  {photo.width > 0 && <span className="mr-3">{photo.width}×{photo.height}</span>}
-                  <span>{formatBytes(photo.bytes)}</span>
-                </div>
-              ) : (
-                <div className="mb-5">
-                  <ExposureStrip photo={photo} />
-                </div>
+                  {photo.lens && (
+                    <p className="mt-0.5 font-mono text-[9.5px] uppercase leading-snug tracking-[0.08em] text-muted-2">{photo.lens}</p>
+                  )}
+                  {cameraSpecs.length > 0 && (
+                    <div className="mt-3 grid grid-cols-4 gap-x-3 gap-y-3 max-[420px]:grid-cols-2">
+                      {cameraSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
+                    </div>
+                  )}
+                </Section>
+              )}
+
+              {/* File */}
+              {fileSpecs.length > 0 && (
+                <Section label="File" className="mb-5">
+                  <div className="grid grid-cols-4 gap-x-3 gap-y-3 max-[420px]:grid-cols-2">
+                    {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
+                  </div>
+                </Section>
               )}
 
               {/* Tags */}
               {photo.tags.length > 0 && (
-                <div className="mb-5 flex flex-wrap gap-1.5">
-                  {photo.tags.map((t) => (
-                    <Link
-                      key={t}
-                      href={`/t/${t}`}
-                      className="rounded-full border border-amber/25 px-3 py-1.5 font-mono text-[10px] text-amber transition-colors hover:bg-amber/10"
-                    >
-                      #{t}
-                    </Link>
-                  ))}
-                </div>
+                <Section label="Tags" className="mb-5">
+                  <div className="flex flex-wrap gap-1.5">
+                    {photo.tags.map((t) => (
+                      <Link
+                        key={t}
+                        href={`/t/${t}`}
+                        className="rounded-full border border-amber/25 px-3 py-1.5 font-mono text-[10px] text-amber transition-colors hover:bg-amber/10"
+                      >
+                        #{t}
+                      </Link>
+                    ))}
+                  </div>
+                </Section>
               )}
 
               {/* Full size + Comments toggle */}
@@ -505,7 +713,8 @@ export function PhotoDetail({
         </div>
       </div>
 
-      <Filmstrip photos={neighbours} activeId={photo.id} onNavigate={asModal ? goto : undefined} />
+      </div>{/* /right column */}
+
       <ShortcutsOverlay />
     </div>
   )

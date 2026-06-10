@@ -160,14 +160,24 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
       }
 
       const fd = new FormData()
-      fd.append("original", originalFile)
       fd.append("large", new File([large], "large.webp", { type: "image/webp" }))
       fd.append("thumb", new File([thumb], "thumb.webp", { type: "image/webp" }))
       fd.append("meta", JSON.stringify(meta))
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
       if (!res.ok) {
         const body = await res.text().catch(() => "")
-        throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`)
+        throw new Error(`POST ${res.status}: ${body.slice(0, 120)}`)
+      }
+      const { id } = await res.json() as { id: string }
+
+      const putRes = await fetch(`/api/admin/upload/${id}/original`, {
+        method: "PUT",
+        headers: { "Content-Type": originalFile.type || "application/octet-stream" },
+        body: originalFile,
+      })
+      if (!putRes.ok) {
+        const body = await putRes.text().catch(() => "")
+        throw new Error(`PUT ${putRes.status}: ${body.slice(0, 120)}`)
       }
       patch(i, { status: "done", errorMsg: null }); onUploaded()
     } catch (err) {

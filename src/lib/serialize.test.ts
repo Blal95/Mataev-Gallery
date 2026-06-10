@@ -12,7 +12,7 @@ const row: PhotoRow = {
   thumbhash: "abc", r2_original: "photos/01J/original.jpg",
   r2_large: "photos/01J/large.webp", r2_thumb: "photos/01J/thumb.webp",
   published: 1, sort_index: null,
-  media_type: "photo", duration: null,
+  media_type: "photo", duration: null, views: 0,
 }
 
 describe("rowToDTO", () => {

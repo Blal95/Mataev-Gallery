@@ -76,6 +76,31 @@ button:focus-visible {
   background: #1a1814;
 }
 
+/* Warm the CARTO dark tiles toward the film-amber palette — the raw tiles are
+   cold grey-blue; sepia + slight desaturation pulls them into the archive look. */
+.leaflet-container .leaflet-tile {
+  filter: sepia(0.38) saturate(0.55) hue-rotate(-8deg) brightness(0.88) contrast(1.05);
+}
+
+/* Leaflet zoom controls — match the dark theme instead of stock white */
+.leaflet-bar {
+  border: 1px solid var(--color-line-2) !important;
+  box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.8) !important;
+}
+.leaflet-bar a {
+  background: var(--color-bg-2) !important;
+  color: var(--color-muted-2) !important;
+  border-bottom: 1px solid var(--color-line) !important;
+}
+.leaflet-bar a:hover {
+  background: var(--color-bg) !important;
+  color: var(--color-amber) !important;
+}
+.leaflet-bar a.leaflet-disabled {
+  background: var(--color-bg-2) !important;
+  color: var(--color-line-2) !important;
+}
+
 /* Atlas map — dark popups so Leaflet's default white card matches the theme */
 .atlas-popup .leaflet-popup-content-wrapper {
   background: var(--color-bg-2);

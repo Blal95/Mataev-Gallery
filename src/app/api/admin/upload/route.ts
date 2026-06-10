@@ -9,9 +9,6 @@ import type { PhotoRow } from "@/types/photo"
 
 export const runtime = "nodejs"
 
-// Raise to 500 * 1024 * 1024 when longer video clips are needed
-const MAX_BYTES = 100 * 1024 * 1024
-
 interface MetaIn {
   caption?: string; tags?: string; takenAt?: number | null
   width: number; height: number; bytes: number; format: string; ext: string; colorSpace?: string | null
@@ -28,23 +25,22 @@ export async function POST(req: Request) {
   if (!(await isAuthed())) return Response.json({ error: "unauthorized" }, { status: 401 })
   if (req.headers.get("Sec-Fetch-Site") === "cross-site") return Response.json({ error: "bad origin" }, { status: 403 })
 
+  // Only large + thumb + meta — original is uploaded separately via PUT to avoid
+  // multipart parsing of large files which hits the Worker CPU time limit.
   const form = await req.formData()
-  const original = form.get("original") as File | null
   const large = form.get("large") as File | null
   const thumb = form.get("thumb") as File | null
   const meta = JSON.parse((form.get("meta") as string) || "{}") as MetaIn
-  if (!original || !large || !thumb) return Response.json({ error: "missing files" }, { status: 400 })
-
-  if (original.size > MAX_BYTES) return Response.json({ error: "file too large" }, { status: 413 })
+  if (!large || !thumb) return Response.json({ error: "missing files" }, { status: 400 })
 
   const id = newId()
   const ALLOWED_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif", "mp4", "mov", "webm"]
   const ext = ALLOWED_EXT.includes((meta.ext || "").toLowerCase()) ? meta.ext.toLowerCase() : "jpg"
   const keys = photoKeys(id, ext)
+
   await Promise.all([
-    putPhotoObject(keys.original, await original.arrayBuffer(), original.type || "image/jpeg"),
-    putPhotoObject(keys.large, await large.arrayBuffer(), "image/webp"),
-    putPhotoObject(keys.thumb, await thumb.arrayBuffer(), "image/webp"),
+    putPhotoObject(keys.large, large, "image/webp"),
+    putPhotoObject(keys.thumb, thumb, "image/webp"),
   ])
 
   let place = meta.place ?? null, country = meta.country ?? null, countryCode = meta.countryCode ?? null

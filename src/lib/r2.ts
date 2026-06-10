@@ -8,7 +8,7 @@ export function photoKeys(id: string, ext: string) {
   }
 }
 
-export async function putPhotoObject(key: string, body: ArrayBuffer, contentType: string): Promise<void> {
+export async function putPhotoObject(key: string, body: ArrayBuffer | Blob | File, contentType: string): Promise<void> {
   await (await cf()).PHOTOS.put(key, body, {
     httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" },
   })
