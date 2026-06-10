@@ -15,6 +15,7 @@ interface Pending {
   exif: Awaited<ReturnType<typeof extractExif>> | null  // null for videos
   place: string
   status: "ready" | "uploading" | "done" | "error"
+  errorMsg: string | null
   mediaType: "photo" | "video"
   duration: number | null  // seconds; null for photos
   posterBlob: Blob | null  // full-res poster frame for videos; null for photos
@@ -43,7 +44,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         // Add placeholder immediately so the user sees something
         setItems((prev) => [...prev, {
           file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
-          exif: null, place: "", status: "ready",
+          exif: null, place: "", status: "ready", errorMsg: null,
           mediaType: "video", duration: null, posterBlob: null, posterUrl: null,
         }])
         // Extract poster + duration in the background
@@ -60,7 +61,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         const file = await toJpegIfHeic(raw)
         setItems((prev) => [...prev, {
           file, preview: URL.createObjectURL(file), caption: "", tags: "",
-          exif, place: "", status: "ready",
+          exif, place: "", status: "ready", errorMsg: null,
           mediaType: "photo", duration: null, posterBlob: null, posterUrl: null,
         }])
         if (exif.lat != null && exif.lon != null) {
@@ -139,9 +140,12 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
       fd.append("thumb", new File([thumb], "thumb.webp", { type: "image/webp" }))
       fd.append("meta", JSON.stringify(meta))
       const res = await fetch("/api/admin/upload", { method: "POST", body: fd })
-      if (!res.ok) throw new Error()
-      patch(i, { status: "done" }); onUploaded()
-    } catch { patch(i, { status: "error" }) }
+      if (!res.ok) {
+        const body = await res.text().catch(() => "")
+        throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`)
+      }
+      patch(i, { status: "done", errorMsg: null }); onUploaded()
+    } catch (err) { patch(i, { status: "error", errorMsg: err instanceof Error ? err.message : String(err) }) }
   }
 
   const readyCount = items.filter((it) => it.status === "ready").length
@@ -199,7 +203,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
                 <button onClick={() => upload(i)} disabled={it.status === "uploading" || it.status === "done"} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">
                   {it.status === "done" ? "Posted ✓" : it.status === "uploading" ? "Posting…" : "Post"}
                 </button>
-                {it.status === "error" && <span className="font-mono text-[10px] text-amber">Failed</span>}
+                {it.status === "error" && <span className="font-mono text-[10px] text-amber" title={it.errorMsg ?? undefined}>Failed {it.errorMsg ? `(${it.errorMsg})` : ""}</span>}
                 {it.mediaType === "video" && it.duration != null && (
                   <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-muted">
                     ▶ {formatDuration(it.duration)}
