@@ -559,33 +559,37 @@ export function PhotoDetail({
         </div>
       )}
 
-      {/* Museum placard — centered caption + meta directly below image (mobile/tablet) */}
+      {/* Caption + location + date — directly below image (mobile/tablet) */}
       {!info && (photo.caption || locationLine || date) && (
-        <div className="relative z-20 bg-bg px-6 pb-7 pt-5 text-center lg:hidden">
+        <div className="relative z-20 bg-bg px-5 pb-6 pt-4 sm:px-7 lg:hidden">
           {photo.caption && (
-            <p className="mx-auto mb-2.5 max-w-[34ch] font-serif text-[21px] italic leading-[1.35] tracking-[-0.01em] text-text sm:text-[23px]">
+            <p className="mb-3 font-serif text-[21px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
               {photo.caption}
             </p>
           )}
           {(locationLine || date) && (
-            <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-              {locationLine && (
+            <div className="flex items-center justify-between gap-3">
+              {locationLine ? (
                 <a
                   href={photo.lat != null && photo.lon != null
                     ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
                     : "/atlas"}
-                  className="inline-flex items-center gap-1.5 py-1 transition-colors hover:text-amber"
+                  className="group/loc flex min-w-0 items-center gap-1.5 py-1"
                 >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
                   </svg>
-                  {flag ? <span>{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="inline-block h-[10px] w-auto" /> : null}
-                  {locationLine}
+                  <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors group-hover/loc:text-amber">
+                    {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
+                  </span>
                 </a>
+              ) : <span />}
+              {date && (
+                <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
+                  {date}
+                </span>
               )}
-              {locationLine && date && <span aria-hidden className="text-line-2">·</span>}
-              {date && <span className="py-1 text-muted/70">{date}</span>}
-            </p>
+            </div>
           )}
         </div>
       )}
