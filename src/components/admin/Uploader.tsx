@@ -58,7 +58,18 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
           .catch(() => {})
       } else {
         const exif = await extractExif(raw)
-        const file = await toJpegIfHeic(raw)
+        let file: File
+        try {
+          file = await toJpegIfHeic(raw)
+        } catch (err) {
+          const msg = err instanceof Error ? (err.message || err.name) : String(err)
+          setItems((prev) => [...prev, {
+            file: raw, preview: URL.createObjectURL(raw), caption: "", tags: "",
+            exif, place: "", status: "error", errorMsg: msg,
+            mediaType: "photo", duration: null, posterBlob: null, posterUrl: null,
+          }])
+          continue
+        }
         setItems((prev) => [...prev, {
           file, preview: URL.createObjectURL(file), caption: "", tags: "",
           exif, place: "", status: "ready", errorMsg: null,
@@ -145,7 +156,12 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         throw new Error(`HTTP ${res.status}: ${body.slice(0, 120)}`)
       }
       patch(i, { status: "done", errorMsg: null }); onUploaded()
-    } catch (err) { patch(i, { status: "error", errorMsg: err instanceof Error ? err.message : String(err) }) }
+    } catch (err) {
+      const msg = err instanceof Error
+        ? (err.message || err.name || "unknown client error")
+        : String(err)
+      patch(i, { status: "error", errorMsg: msg })
+    }
   }
 
   const readyCount = items.filter((it) => it.status === "ready").length
