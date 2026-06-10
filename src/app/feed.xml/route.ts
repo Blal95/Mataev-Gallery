@@ -13,7 +13,7 @@ export async function GET() {
 
   const itemsXml = items.map(({ row, tags }) => {
     const dto = rowToDTO(row, tags)
-    const pubDate = row.created_at ? new Date(row.created_at * 1000).toUTCString() : new Date().toUTCString()
+    const pubDate = row.created_at ? new Date(row.created_at).toUTCString() : new Date().toUTCString()
     const desc = [dto.caption, dto.place, dto.country].filter(Boolean).join(" · ") || "Photograph by Bilal R. Mataev"
     return `<item>
       <title><![CDATA[${dto.caption ?? dto.place ?? "Frame"}]]></title>

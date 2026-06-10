@@ -9,21 +9,26 @@ const COLS =
   "gps_lat,gps_lon,gps_alt,place,country,country_code,thumbhash," +
   "r2_original,r2_large,r2_thumb,published,sort_index,media_type,duration,views"
 
+// D1 caps bound parameters at 100 per statement, so the IN-list is chunked.
+const BIND_CHUNK = 90
+
 async function tagsFor(db: SqlDb, ids: string[]): Promise<Map<string, string[]>> {
   const map = new Map<string, string[]>()
-  if (ids.length === 0) return map
-  const placeholders = ids.map(() => "?").join(",")
-  const { results } = await db
-    .prepare(
-      `SELECT pt.photo_id AS pid, t.name AS name FROM photo_tags pt
-       JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id IN (${placeholders}) ORDER BY t.name`,
-    )
-    .bind(...ids)
-    .all<{ pid: string; name: string }>()
-  for (const r of results) {
-    const arr = map.get(r.pid) ?? []
-    arr.push(r.name)
-    map.set(r.pid, arr)
+  for (let i = 0; i < ids.length; i += BIND_CHUNK) {
+    const chunk = ids.slice(i, i + BIND_CHUNK)
+    const placeholders = chunk.map(() => "?").join(",")
+    const { results } = await db
+      .prepare(
+        `SELECT pt.photo_id AS pid, t.name AS name FROM photo_tags pt
+         JOIN tags t ON t.id = pt.tag_id WHERE pt.photo_id IN (${placeholders}) ORDER BY t.name`,
+      )
+      .bind(...chunk)
+      .all<{ pid: string; name: string }>()
+    for (const r of results) {
+      const arr = map.get(r.pid) ?? []
+      arr.push(r.name)
+      map.set(r.pid, arr)
+    }
   }
   return map
 }
@@ -105,8 +110,16 @@ export async function listGeoPhotos(db: SqlDb): Promise<GeoPhoto[]> {
   return results
 }
 
-export async function getPhoto(db: SqlDb, id: string): Promise<PhotoWithTags | null> {
-  const row = await db.prepare(`SELECT ${COLS} FROM photos WHERE id = ? OR slug = ?`).bind(id, id).first<PhotoRow>()
+export async function getPhoto(
+  db: SqlDb,
+  id: string,
+  opts: { all?: boolean } = {},
+): Promise<PhotoWithTags | null> {
+  const pubFilter = opts.all ? "" : " AND published = 1"
+  const row = await db
+    .prepare(`SELECT ${COLS} FROM photos WHERE (id = ? OR slug = ?)${pubFilter}`)
+    .bind(id, id)
+    .first<PhotoRow>()
   if (!row) return null
   const tagMap = await tagsFor(db, [row.id])
   return { row, tags: tagMap.get(row.id) ?? [] }
@@ -137,7 +150,11 @@ export async function updatePhoto(
   patch: Partial<Pick<PhotoRow, "caption" | "place" | "country" | "country_code" | "published" | "gps_lat" | "gps_lon">>,
 ): Promise<void> {
   const ALLOWED = new Set(["caption", "place", "country", "country_code", "published", "gps_lat", "gps_lon"])
-  const fields = Object.keys(patch).filter((f) => ALLOWED.has(f))
+  // Skip keys explicitly set to undefined — Object.keys includes them, and
+  // binding undefined makes D1 throw (partial PATCH bodies would 500).
+  const fields = Object.keys(patch).filter(
+    (f) => ALLOWED.has(f) && (patch as Record<string, unknown>)[f] !== undefined,
+  )
   if (fields.length) {
     const set = fields.map((f) => `${f} = ?`).join(", ")
     await db.prepare(`UPDATE photos SET ${set} WHERE id = ?`).bind(...fields.map((f) => (patch as Record<string, unknown>)[f]), id).run()

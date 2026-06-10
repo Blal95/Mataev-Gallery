@@ -5,6 +5,11 @@ import type { PhotoDTO } from "@/types/photo"
 
 type Mode = "tag" | "location" | "draft" | "delete"
 
+// fetch resolves on 4xx/5xx — without this, failed bulk ops flash "Done ✓"
+function assertOk(res: Response) {
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 const MODES: { key: Mode; label: string }[] = [
   { key: "tag", label: "Tag" },
   { key: "location", label: "Location" },
@@ -48,7 +53,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
         return fetch(`/api/admin/photos/${id}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tags: newTags }),
-        })
+        }).then(assertOk)
       }))
       flash("done"); setInput(""); clearAll(); onDone()
     } catch { flash("error") }
@@ -64,7 +69,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
         fetch(`/api/admin/photos/${id}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ place }),
-        })
+        }).then(assertOk)
       ))
       flash("done"); setInput(""); clearAll(); onDone()
     } catch { flash("error") }
@@ -79,7 +84,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
         fetch(`/api/admin/photos/${id}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ published }),
-        })
+        }).then(assertOk)
       ))
       flash("done"); clearAll(); onDone()
     } catch { flash("error") }
@@ -91,7 +96,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
     setBusy(true)
     try {
       await Promise.all([...selected].map(id =>
-        fetch(`/api/admin/photos/${id}`, { method: "DELETE" })
+        fetch(`/api/admin/photos/${id}`, { method: "DELETE" }).then(assertOk)
       ))
       flash("done"); setConfirmDelete(false); clearAll(); onDone()
     } catch { flash("error") }

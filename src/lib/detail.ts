@@ -5,12 +5,20 @@ import { rowToDTO } from "./serialize"
 import type { PhotoDTO } from "@/types/photo"
 
 export const getDetail = cache(async (db: SqlDb, idOrSlug: string): Promise<{
-  photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number
+  photo: PhotoDTO; prev: PhotoDTO | null; next: PhotoDTO | null; index: number; total: number
 } | null> => {
   const all = (await listPhotos(db, {})).map(({ row, tags }) => rowToDTO(row, tags))
   const index = all.findIndex((p) => p.id === idOrSlug || p.slug === idOrSlug)
   if (index < 0) return null
-  return { photo: all[index], neighbours: all, index, total: all.length }
+  // Only prev/next ship to the client — sending the whole gallery as props
+  // made every detail page payload grow with the photo count.
+  return {
+    photo: all[index],
+    prev: all[index - 1] ?? null,
+    next: all[index + 1] ?? null,
+    index,
+    total: all.length,
+  }
 })
 
 export const getPhotoDTO = cache(async (db: SqlDb, idOrSlug: string): Promise<PhotoDTO | null> => {

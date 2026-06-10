@@ -42,7 +42,6 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   const database = await db()
   const data = await getDetail(database, id)
   if (!data) notFound()
-  database.prepare("UPDATE photos SET views = views + 1 WHERE id = ? OR slug = ?").bind(id, id).run().catch(() => {})
   const { photo } = data
   const jsonLd = {
     "@context": "https://schema.org",

@@ -39,9 +39,9 @@ function SpecCell({ label, value }: { label: string; value: string }) {
 }
 
 export function PhotoDetail({
-  photo, neighbours, index, total, asModal,
+  photo, prev, next, index, total, asModal,
 }: {
-  photo: PhotoDTO; neighbours: PhotoDTO[]; index: number; total: number; asModal: boolean
+  photo: PhotoDTO; prev: PhotoDTO | null; next: PhotoDTO | null; index: number; total: number; asModal: boolean
 }) {
   const router = useRouter()
   const [info, setInfo] = useState(false)
@@ -79,9 +79,6 @@ export function PhotoDetail({
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const placeholder = thumbhashToUrl(photo.thumbhash)
-
-  const prev = neighbours[index - 1]
-  const next = neighbours[index + 1]
 
   const close = () => {
     if (asModal) router.back()
@@ -189,6 +186,15 @@ export function PhotoDetail({
   useEffect(() => {
     sessionStorage.setItem("detail-info", info ? "1" : "0")
   }, [info])
+
+  // Count a view once per photo per browser session — covers both the full
+  // page and the intercepted modal route.
+  useEffect(() => {
+    const key = `viewed-${photo.id}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, "1")
+    fetch(`/api/photos/${photo.id}/view`, { method: "POST" }).catch(() => {})
+  }, [photo.id])
 
   // Autoplay 1s after canplay fires
   useEffect(() => {
@@ -708,7 +714,7 @@ export function PhotoDetail({
                   className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-6 sm:px-6"
                   style={{ maxHeight: "min(35vh, 280px)" }}
                 >
-                  <PhotoComments photoId={photo.id} />
+                  {showComments && <PhotoComments photoId={photo.id} />}
                 </div>
               </div>
             </div>

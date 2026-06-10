@@ -5,6 +5,7 @@ import { insertPhoto } from "@/lib/photos"
 import { reverseGeocode } from "@/lib/geocode"
 import { newId } from "@/lib/ids"
 import { parseTags } from "@/lib/tags"
+import { sameOriginGuard } from "@/lib/api"
 import type { PhotoRow } from "@/types/photo"
 
 export const runtime = "nodejs"
@@ -23,7 +24,7 @@ interface MetaIn {
 
 export async function POST(req: Request) {
   if (!(await isAuthed())) return Response.json({ error: "unauthorized" }, { status: 401 })
-  if (req.headers.get("Sec-Fetch-Site") === "cross-site") return Response.json({ error: "bad origin" }, { status: 403 })
+  if (!sameOriginGuard(req)) return Response.json({ error: "bad origin" }, { status: 403 })
 
   // Only large + thumb + meta — original is uploaded separately via PUT to avoid
   // multipart parsing of large files which hits the Worker CPU time limit.

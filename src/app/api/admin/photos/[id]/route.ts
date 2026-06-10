@@ -3,13 +3,9 @@ import { isAuthed } from "@/lib/authctx"
 import { updatePhoto, setTags, deletePhoto } from "@/lib/photos"
 import { deletePhotoObjects } from "@/lib/r2"
 import { parseTags } from "@/lib/tags"
+import { sameOriginGuard as guard } from "@/lib/api"
 
 export const runtime = "nodejs"
-
-function guard(req: Request) {
-  if (req.headers.get("Sec-Fetch-Site") === "cross-site") return false
-  return true
-}
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!(await isAuthed())) return Response.json({ error: "unauthorized" }, { status: 401 })

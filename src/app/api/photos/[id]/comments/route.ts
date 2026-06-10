@@ -2,15 +2,12 @@ import { db } from "@/lib/db"
 import { getPhoto } from "@/lib/photos"
 import { countRecentByIp, insertComment, listComments } from "@/lib/comments"
 import { hashIp } from "@/lib/ip-hash"
+import { sameOriginGuard as guard } from "@/lib/api"
 
 export const runtime = "nodejs"
 
 const RATE_WINDOW_MS = 60 * 60 * 1000
 const RATE_MAX = 8
-
-function guard(req: Request) {
-  return req.headers.get("Sec-Fetch-Site") !== "cross-site"
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -28,7 +25,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const found = await getPhoto(database, id)
   if (!found) return Response.json({ error: "not found" }, { status: 404 })
 
-  const body = (await req.json()) as { author?: string; body?: string; website?: string }
+  const body = (await req.json().catch(() => null)) as { author?: string; body?: string; website?: string } | null
+  if (!body) return Response.json({ error: "invalid body" }, { status: 400 })
   if (body.website?.trim()) return Response.json({ ok: true })
 
   const author = (body.author ?? "").trim().slice(0, 40)

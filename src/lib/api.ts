@@ -29,3 +29,21 @@ export function corsHeaders(origin: string | null, allowed: string[]): Record<st
 }
 
 export const PUBLIC_CACHE = "public, s-maxage=300, stale-while-revalidate=86400"
+
+/**
+ * CSRF guard for mutating routes. Sec-Fetch-Site covers modern browsers; the
+ * Origin/Host comparison catches clients that omit it.
+ */
+export function sameOriginGuard(req: Request): boolean {
+  if (req.headers.get("Sec-Fetch-Site") === "cross-site") return false
+  const origin = req.headers.get("Origin")
+  const host = req.headers.get("Host")
+  if (origin && host) {
+    try {
+      if (new URL(origin).host !== host) return false
+    } catch {
+      return false
+    }
+  }
+  return true
+}

@@ -33,7 +33,7 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
 
   async function save() {
     setBusy(true)
-    await fetch(`/api/admin/photos/${photo.id}`, {
+    const res = await fetch(`/api/admin/photos/${photo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -46,8 +46,9 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
         lon: location.lon,
         published: published ? 1 : 0,
       }),
-    })
+    }).catch(() => null)
     setBusy(false)
+    if (!res?.ok) { alert("Save failed — try again"); return }
     onSaved()
   }
   async function remove() {
