@@ -10,6 +10,9 @@ import {
 } from "@/lib/format"
 
 export const runtime = "edge"
+// Cache the generated card for a day so repeated social/crawler hits don't
+// re-render the PNG (Satori is CPU-heavy) on every request.
+export const revalidate = 86400
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 

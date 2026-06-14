@@ -1,6 +1,7 @@
 import { db } from "@/lib/db"
 import { isAuthed } from "@/lib/authctx"
 import { putPhotoObject, photoKeys } from "@/lib/r2"
+import { presignOriginalPut } from "@/lib/r2-presign"
 import { insertPhoto } from "@/lib/photos"
 import { reverseGeocode } from "@/lib/geocode"
 import { newId } from "@/lib/ids"
@@ -20,6 +21,7 @@ interface MetaIn {
   thumbhash?: string | null
   mediaType?: string | null
   duration?: number | null
+  originalContentType?: string | null
 }
 
 export async function POST(req: Request) {
@@ -65,5 +67,13 @@ export async function POST(req: Request) {
     views: 0,
   }
   await insertPhoto(await db(), row, parseTags(meta.tags ?? ""))
-  return Response.json({ ok: true, id, slug: row.slug })
+
+  // Presigned URL so the browser uploads the original straight to R2, skipping
+  // the Worker entirely. Null when R2 credentials aren't configured — the
+  // client then falls back to PUT /api/admin/upload/{id}/original.
+  const uploadUrl = await presignOriginalPut(
+    keys.original,
+    meta.originalContentType || "application/octet-stream",
+  )
+  return Response.json({ ok: true, id, slug: row.slug, uploadUrl })
 }
