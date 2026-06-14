@@ -742,13 +742,12 @@ export function PhotoDetail({
               {photo.caption}
             </p>
           )}
-          {!info && !photo.caption && locationLine && (
+          {!info && (locationLine || date) && (
             <p className="truncate px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
-              {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
+              {locationLine
+                ? <>{flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}</>
+                : date}
             </p>
-          )}
-          {!info && !photo.caption && !locationLine && date && (
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">{date}</p>
           )}
           <span aria-hidden className={`h-[3px] w-8 rounded-full transition-colors duration-200 ${info ? "bg-amber/50" : "bg-line-2"}`} />
         </button>
@@ -772,18 +771,9 @@ export function PhotoDetail({
         <div className="overflow-hidden">
           <div className="border-t border-line-2 bg-bg-2">
 
-            {/* Grabber — tap to dismiss */}
-            <button
-              onClick={() => setInfo(false)}
-              aria-label="Hide details"
-              className="flex w-full items-center justify-center pb-1.5 pt-2.5"
-            >
-              <span aria-hidden className="h-1 w-9 rounded-full bg-line-2" />
-            </button>
-
             {/* Main metadata — scrollable, capped height */}
             <div
-              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-1 sm:px-6"
+              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-3 sm:px-6"
               style={{ maxHeight: "min(42vh, 340px)" }}
             >
               {/* Caption + location + date — repeated here so it never hides under the sheet */}
