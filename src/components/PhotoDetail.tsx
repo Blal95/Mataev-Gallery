@@ -603,19 +603,14 @@ export function PhotoDetail({
           </p>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
-          <button onClick={() => prev && goto(prev.slug)} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
-            <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
-          </button>
-          <button onClick={() => next && goto(next.slug)} disabled={!next} aria-label="Next frame" className={hdrBtn}>
-            <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
-          </button>
-          <button
-            onClick={toggleInfo}
-            aria-pressed={info}
-            className={`ml-1 mr-0.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors landscape:hidden lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
-          >
-            <Icon d="M12 16v-5M12 8h.01" className="h-3.5 w-3.5" /> Info
-          </button>
+          <div className="hidden items-center landscape:flex lg:flex">
+            <button onClick={() => prev && goto(prev.slug)} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
+              <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
+            </button>
+            <button onClick={() => next && goto(next.slug)} disabled={!next} aria-label="Next frame" className={hdrBtn}>
+              <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
+            </button>
+          </div>
           <button onClick={close} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
             <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
           </button>
@@ -724,49 +719,49 @@ export function PhotoDetail({
         </div>
       )}
 
-      {/* Caption + location + date — directly below image (mobile/tablet).
-          Uses the same grid-rows trick as the info sheet but inverted: collapses
-          to 0fr when info opens so both panels animate simultaneously. */}
-      {(photo.caption || locationLine || date) && (
-        <div className={`relative z-20 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] landscape:hidden lg:hidden ${info ? "pointer-events-none grid-rows-[0fr]" : "grid-rows-[1fr]"}`}>
-          <div className="overflow-hidden">
-            <div className="bg-bg px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6 sm:pt-4">
-              {photo.caption && (
-                <>
-                  <p className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
-                  <p className="mb-3 line-clamp-2 font-serif text-[19px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
-                    {photo.caption}
-                  </p>
-                </>
-              )}
-              {(locationLine || date) && (
-                <div className="flex items-center justify-between gap-3">
-                  {locationLine ? (
-                    <a
-                      href={photo.lat != null && photo.lon != null
-                        ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
-                        : "/atlas"}
-                      className="group/loc flex min-w-0 items-center gap-1.5 py-1"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                      </svg>
-                      <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors group-hover/loc:text-amber">
-                        {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
-                      </span>
-                    </a>
-                  ) : <span />}
-                  {date && (
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
-                      {date}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Bottom action bar — portrait phones/tablets only.
+          Houses prev/next nav and an info trigger (caption preview + pill).
+          Replaces the old caption strip + header INFO button. */}
+      <div className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden">
+        <button
+          onClick={() => prev && goto(prev.slug)}
+          disabled={!prev}
+          aria-label="Previous frame"
+          className={`${hdrBtn} ml-1 shrink-0`}
+        >
+          <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
+        </button>
+
+        <button
+          onClick={toggleInfo}
+          aria-expanded={info}
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-3"
+        >
+          {!info && photo.caption && (
+            <p className="line-clamp-1 px-2 font-serif text-[15px] italic leading-tight text-text/80">
+              {photo.caption}
+            </p>
+          )}
+          {!info && !photo.caption && locationLine && (
+            <p className="truncate px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+              {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
+            </p>
+          )}
+          {!info && !photo.caption && !locationLine && date && (
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">{date}</p>
+          )}
+          <span aria-hidden className={`h-[3px] w-8 rounded-full transition-colors duration-200 ${info ? "bg-amber/50" : "bg-line-2"}`} />
+        </button>
+
+        <button
+          onClick={() => next && goto(next.slug)}
+          disabled={!next}
+          aria-label="Next frame"
+          className={`${hdrBtn} mr-1 shrink-0`}
+        >
+          <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* Info sheet — in flow below the stage (mobile/tablet) so opening it
           shrinks the stage and the whole frame stays visible; desktop uses sidebar */}
@@ -775,7 +770,7 @@ export function PhotoDetail({
         className={`relative z-40 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] landscape:hidden lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-line-2 bg-bg-2 pb-[env(safe-area-inset-bottom)]">
+          <div className="border-t border-line-2 bg-bg-2">
 
             {/* Grabber — tap to dismiss */}
             <button
