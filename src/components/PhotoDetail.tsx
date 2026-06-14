@@ -186,7 +186,21 @@ export function PhotoDetail({
 
     // Swipe nav only when not zoomed (panning owns the gesture while zoomed)
     if (zoomRef.current > 1) return
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return
+
+    // Vertical swipe — open/close info sheet on portrait mobile
+    if (Math.abs(dy) > Math.abs(dx)) {
+      const isPortraitMobile = typeof window !== "undefined"
+        && window.innerWidth < 1024
+        && !window.matchMedia("(orientation: landscape)").matches
+      if (isPortraitMobile) {
+        if (dy < -50 && !info) { setInfo(true); return }
+        if (dy > 50 && info) { setInfo(false); return }
+      }
+      return
+    }
+
+    // Horizontal swipe — navigate between photos
+    if (Math.abs(dx) < 50) return
     if (dx < 0 && next) goto(next.slug)
     if (dx > 0 && prev) goto(prev.slug)
   }
