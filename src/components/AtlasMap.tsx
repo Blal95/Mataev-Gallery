@@ -81,9 +81,9 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           if (!geo || cancelled || !map) return
           L.geoJSON(geo, {
             style: {
-              color: "#ffffff",
+              color: "#a09080",
               weight: 1,
-              opacity: 0.6,
+              opacity: 0.7,
               fillOpacity: 0,
             },
             interactive: false,
