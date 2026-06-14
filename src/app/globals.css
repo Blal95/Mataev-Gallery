@@ -73,13 +73,14 @@ button:focus-visible {
   position: relative;
   z-index: 0;
   isolation: isolate;
-  background: #1a1814;
+  background: #110e0a;
 }
 
-/* Warm the CARTO dark tiles toward the film-amber palette — the raw tiles are
-   cold grey-blue; sepia + slight desaturation pulls them into the archive look. */
+/* grayscale(1) strips CARTO's cold blue cast, then a restrained sepia +
+   saturate pass warms the charcoal toward the palette without flooding the
+   ocean with mud-brown. Amber stays reserved for markers and accents. */
 .leaflet-container .leaflet-tile {
-  filter: sepia(0.38) saturate(0.55) hue-rotate(-8deg) brightness(0.88) contrast(1.05);
+  filter: grayscale(1) sepia(0.45) saturate(1.3) brightness(0.82) contrast(1.08);
 }
 
 /* Leaflet zoom controls — match the dark theme instead of stock white */
@@ -101,18 +102,32 @@ button:focus-visible {
   color: var(--color-line-2) !important;
 }
 
-/* Atlas map — dark popups so Leaflet's default white card matches the theme */
+/* Atlas map — dark popups matching the film-archive palette */
 .atlas-popup .leaflet-popup-content-wrapper {
   background: var(--color-bg-2);
   color: var(--color-text);
   border: 1px solid var(--color-line-2);
-  border-radius: 6px;
-  box-shadow: 0 18px 44px -14px rgba(0, 0, 0, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.92), 0 4px 16px rgba(0, 0, 0, 0.5);
 }
-.atlas-popup .leaflet-popup-content { margin: 8px; }
-.atlas-popup .leaflet-popup-tip { background: var(--color-bg-2); border: 1px solid var(--color-line-2); }
-.atlas-popup .leaflet-popup-close-button { color: var(--color-muted); }
-.atlas-popup a[data-slug]:hover img { outline: 2px solid var(--color-amber); outline-offset: 1px; }
+.atlas-popup .leaflet-popup-content { margin: 10px; }
+.atlas-popup .leaflet-popup-tip { background: var(--color-bg-2); }
+.atlas-popup .leaflet-popup-tip-container { margin-top: -1px; }
+.atlas-popup .leaflet-popup-close-button {
+  color: var(--color-muted) !important;
+  right: 7px !important; top: 7px !important;
+  font-size: 17px !important;
+  width: 22px !important; height: 22px !important;
+  line-height: 22px !important;
+  padding: 0 !important;
+  background: none !important;
+}
+.atlas-popup .leaflet-popup-close-button:hover { color: var(--color-amber) !important; }
+.atlas-popup a[data-slug]:hover img {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
 
 /* Gallery tile entrance — staggered fade+lift per tile */
 @keyframes tile-in {

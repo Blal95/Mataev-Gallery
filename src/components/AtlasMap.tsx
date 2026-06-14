@@ -15,6 +15,9 @@ export interface AtlasPin {
   countryCode: string | null
 }
 
+/** Marker carrying its source pin so cluster popups can read it back. */
+type PinMarker = import("leaflet").Marker & { _pin?: AtlasPin }
+
 /**
  * The Atlas — every geotagged photo plotted on one dark map. Click a pin to
  * open that frame. This is the "between the fjell and the Caucasus" story made
@@ -67,19 +70,41 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         minZoom: 2,
       }).addTo(map)
 
+      // Custom border: Chechnya drawn as its own country, extended to include
+      // the Khasavyurt region (Khasavyurtovsky district + city okrug, where
+      // Bammatyurt lies). Dissolved from OSM admin boundaries, served from
+      // /public so the polygon never bloats the JS bundle.
+      void fetch("/chechnya-border.json")
+        .then((r) => (r.ok ? (r.json() as Promise<GeoJSON.Feature>) : null))
+        .then((geo) => {
+          if (!geo || cancelled || !map) return
+          L.geoJSON(geo, {
+            style: {
+              color: "#e3a857",
+              weight: 1.5,
+              opacity: 0.75,
+              dashArray: "6 4",
+              fillColor: "#e3a857",
+              fillOpacity: 0.05,
+            },
+            interactive: false,
+          }).addTo(map)
+        })
+        .catch(() => {})
+
       const markers: import("leaflet").Marker[] = []
       const markerBySlug = new Map<string, import("leaflet").Marker>()
 
-      const cluster = (L as any).markerClusterGroup({
+      const cluster = L.markerClusterGroup({
         maxClusterRadius: 50,
         spiderfyOnMaxZoom: false,
         showCoverageOnHover: false,
         zoomToBoundsOnClick: false,
-        iconCreateFunction: (c: any) => L.divIcon({
+        iconCreateFunction: (c) => L.divIcon({
           className: "",
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-          html: `<div style="width:22px;height:22px;border-radius:9999px;background:#e3a857;box-shadow:0 0 0 4px rgba(227,168,87,0.2),0 0 12px rgba(227,168,87,0.8);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-size:9px;color:#0a0908;font-weight:700;letter-spacing:0">${c.getChildCount()}</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+          html: `<div style="width:30px;height:30px;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(227,168,87,0.55);background:rgba(227,168,87,0.12)"></div><span style="font-family:ui-monospace,monospace;font-size:9px;font-weight:700;color:#e3a857;letter-spacing:0;position:relative">${c.getChildCount()}</span></div>`,
         }),
       })
 
@@ -92,9 +117,11 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
             iconSize: [16, 16],
             iconAnchor: [8, 8],
             html:
-              '<div style="width:14px;height:14px;border-radius:9999px;background:#e3a857;' +
-              'box-shadow:0 0 0 4px rgba(227,168,87,0.2),0 0 12px rgba(227,168,87,0.8);' +
-              'cursor:pointer;transition:transform .18s ease"></div>',
+              '<div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;cursor:pointer">' +
+              '<div style="width:8px;height:8px;border-radius:50%;background:#e3a857;' +
+              'box-shadow:0 0 0 3px rgba(227,168,87,0.22),0 0 0 6px rgba(227,168,87,0.08),0 0 10px rgba(227,168,87,0.65);' +
+              'transition:transform .18s ease"></div>' +
+              '</div>',
           }),
         })
 
@@ -108,15 +135,17 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           : (flagEmoji ? flagEmoji + " " : "")
         const placeLabel = pin.place ? escapeHtml(pin.place) : ""
         marker.bindPopup(
-          `<a href="/image/${pin.slug}" data-slug="${pin.slug}" style="display:block;width:150px;text-decoration:none;color:inherit">
-             <img src="${pin.thumb}" alt="" style="width:150px;height:100px;object-fit:cover;border-radius:4px;display:block" loading="lazy" />
-             ${pin.caption ? `<div style="font-style:italic;font-size:12px;margin-top:6px;line-height:1.3;color:#e8e4dc">${escapeHtml(pin.caption)}</div>` : ""}
-             ${placeLabel ? `<div style="font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-top:4px;color:#9a948a">${flagPrefix}${placeLabel}</div>` : ""}
+          `<a href="/image/${pin.slug}" data-slug="${pin.slug}" style="display:block;width:164px;text-decoration:none;color:inherit;user-select:none">
+             <div style="border-radius:6px;overflow:hidden;line-height:0;box-shadow:0 4px 14px rgba(0,0,0,0.45)">
+               <img src="${pin.thumb}" alt="" style="width:164px;height:110px;object-fit:cover;display:block" loading="lazy" />
+             </div>
+             ${pin.caption ? `<p style="font-family:var(--font-playfair,Georgia,'Times New Roman',serif);font-style:italic;font-size:12.5px;margin:8px 0 0;line-height:1.35;color:#efe8dd">${escapeHtml(pin.caption)}</p>` : ""}
+             ${placeLabel ? `<p style="font-family:ui-monospace,'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.18em;margin:${pin.caption ? "5px" : "8px"} 0 0;color:#9b8f80">${flagPrefix}${placeLabel}</p>` : ""}
            </a>`,
-          { closeButton: true, className: "atlas-popup", minWidth: 150, maxWidth: 150 },
+          { closeButton: true, className: "atlas-popup", minWidth: 164, maxWidth: 164 },
         )
 
-        ;(marker as any)._pin = pin
+        ;(marker as PinMarker)._pin = pin
         cluster.addLayer(marker)
         markers.push(marker)
         markerBySlug.set(pin.slug, marker)
@@ -125,11 +154,15 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
       cluster.addTo(map!)
 
       // Cluster click → show a popup with the first photo + the rest as "in this cluster"
-      cluster.on("clusterclick", (e: any) => {
-        e.originalEvent?.stopPropagation()
-        const clusterPins: AtlasPin[] = (e.layer.getAllChildMarkers() as any[])
-          .map((m) => m._pin as AtlasPin)
-          .filter((p): p is AtlasPin => !!p)
+      cluster.on("clusterclick", (e) => {
+        const ev = e as import("leaflet").LeafletEvent & {
+          layer: import("leaflet").MarkerCluster
+          originalEvent?: MouseEvent
+        }
+        ev.originalEvent?.stopPropagation()
+        const clusterPins: AtlasPin[] = ev.layer.getAllChildMarkers()
+          .map((m: PinMarker) => m._pin)
+          .filter((p: AtlasPin | undefined): p is AtlasPin => !!p)
         if (!clusterPins.length) return
 
         const main = clusterPins[0]
@@ -154,18 +187,20 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           : ""
 
         const toggleHtml = rest.length > 0
-          ? `<button data-cluster-toggle style="margin-top:8px;padding-top:8px;border-top:1px solid #2a241d;border-left:none;border-right:none;border-bottom:none;background:none;padding-left:0;padding-right:0;width:100%;text-align:left;font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#9a948a;cursor:pointer;display:block">In this cluster (${rest.length})</button>`
+          ? `<button data-cluster-toggle style="margin-top:9px;padding-top:9px;border-top:1px solid #2a241d;border:none;border-top:1px solid #2a241d;background:none;padding-left:0;padding-right:0;width:100%;text-align:left;font-family:ui-monospace,'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.16em;color:#9b8f80;cursor:pointer;display:block">In this cluster (${rest.length})</button>`
           : ""
 
         const html =
-          `<a href="/image/${main.slug}" data-slug="${main.slug}" style="display:block;width:150px;text-decoration:none;color:inherit">
-            <img src="${main.thumb}" alt="" style="width:150px;height:100px;object-fit:cover;border-radius:4px;display:block" loading="lazy" />
-            ${main.caption ? `<div style="font-style:italic;font-size:12px;margin-top:6px;line-height:1.3;color:#e8e4dc">${escapeHtml(main.caption)}</div>` : ""}
-            ${placeLabel ? `<div style="font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;margin-top:4px;color:#9a948a">${flag}${placeLabel}</div>` : ""}
+          `<a href="/image/${main.slug}" data-slug="${main.slug}" style="display:block;width:164px;text-decoration:none;color:inherit;user-select:none">
+            <div style="border-radius:6px;overflow:hidden;line-height:0;box-shadow:0 4px 14px rgba(0,0,0,0.45)">
+              <img src="${main.thumb}" alt="" style="width:164px;height:110px;object-fit:cover;display:block" loading="lazy" />
+            </div>
+            ${main.caption ? `<p style="font-family:var(--font-playfair,Georgia,'Times New Roman',serif);font-style:italic;font-size:12.5px;margin:8px 0 0;line-height:1.35;color:#efe8dd">${escapeHtml(main.caption)}</p>` : ""}
+            ${placeLabel ? `<p style="font-family:ui-monospace,'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.18em;margin:${main.caption ? "5px" : "8px"} 0 0;color:#9b8f80">${flag}${placeLabel}</p>` : ""}
           </a>${toggleHtml}${restHtml}`
 
-        const popup = L.popup({ closeButton: true, className: "atlas-popup", minWidth: 150, maxWidth: 150 })
-          .setLatLng(e.layer.getLatLng())
+        const popup = L.popup({ closeButton: true, className: "atlas-popup", minWidth: 164, maxWidth: 164 })
+          .setLatLng(ev.layer.getLatLng())
           .setContent(html)
           .openOn(map!)
 
@@ -218,7 +253,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
             if (content) {
               const toggle = document.createElement("button")
               toggle.textContent = `Nearby (${nearby.length})`
-              toggle.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid #2a241d;border-left:none;border-right:none;border-bottom:none;background:none;padding-left:0;padding-right:0;width:100%;text-align:left;font-family:ui-monospace,monospace;font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#9a948a;cursor:pointer;display:block"
+              toggle.style.cssText = "margin-top:9px;padding-top:9px;border-top:1px solid #2a241d;border-left:none;border-right:none;border-bottom:none;background:none;padding-left:0;padding-right:0;width:100%;text-align:left;font-family:ui-monospace,'JetBrains Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:.16em;color:#9b8f80;cursor:pointer;display:block"
 
               const nearbyEl = document.createElement("div")
               nearbyEl.style.display = "none"

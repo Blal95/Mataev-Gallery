@@ -25,16 +25,22 @@ export function MapChip({ photo }: { photo: PhotoDTO }) {
 
   return (
     <div className="w-[116px] shrink-0 text-right">
-      <div className="relative h-[116px] overflow-hidden rounded-[5px] border border-line-2 bg-[#0a1322]">
-        <LocationMap lat={photo.lat} lon={photo.lon} zoom={9} className="h-full w-full" />
+      <div className="relative h-[116px] overflow-hidden rounded-[5px] border border-line-2 bg-bg">
+        <LocationMap lat={photo.lat} lon={photo.lon} zoom={9} interactive={false} className="h-full w-full" />
+        {/* Radial vignette — adds archival depth, softens tile edges */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-[4px]"
+          style={{ background: "radial-gradient(ellipse at center, transparent 38%, rgba(10,9,8,0.65) 100%)" }}
+        />
       </div>
-      <div className="mt-1.5 text-[11px] text-text">
+      <div className="mt-1.5 font-mono text-[10.5px] tracking-[0.04em] text-text/90">
         <FlagDisplay countryCode={photo.countryCode} lat={photo.lat} lon={photo.lon} />{photo.place}
       </div>
-      <div className="mt-0.5 font-mono text-[8.5px] tracking-[0.06em] text-muted">
+      <div className="mt-0.5 font-mono text-[8px] tabular-nums tracking-[0.06em] text-muted">
         {photo.lat.toFixed(2)}°{photo.lat >= 0 ? "N" : "S"} {Math.abs(photo.lon).toFixed(2)}°{photo.lon >= 0 ? "E" : "W"}
       </div>
-      <div className="mt-0.5 font-mono text-[7.5px] tracking-[0.04em] text-muted/70">
+      <div className="mt-0.5 font-mono text-[7px] tracking-[0.04em] text-muted/50">
         © OpenStreetMap · CARTO
       </div>
     </div>

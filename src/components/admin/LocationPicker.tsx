@@ -144,11 +144,12 @@ export function LocationPicker({
 
   useEffect(() => {
     const q = query.trim()
-    if (q.length < 2) {
-      setHits([])
-      return
-    }
+    // Short queries clear instantly (next tick); real queries debounce 350ms.
     const t = setTimeout(() => {
+      if (q.length < 2) {
+        setHits([])
+        return
+      }
       setSearching(true)
       fetch(`/api/admin/geocode?q=${encodeURIComponent(q)}`)
         .then(async (r) => {
@@ -157,7 +158,7 @@ export function LocationPicker({
         })
         .catch(() => setHits([]))
         .finally(() => setSearching(false))
-    }, 350)
+    }, q.length < 2 ? 0 : 350)
     return () => clearTimeout(t)
   }, [query])
 

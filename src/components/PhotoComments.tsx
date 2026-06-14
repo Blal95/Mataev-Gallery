@@ -29,6 +29,9 @@ export function PhotoComments({ photoId }: { photoId: string }) {
     setLoading(false)
   }, [photoId])
 
+  // Async data fetch on mount — setState only fires after the awaited
+  // response, never synchronously in the effect body.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load() }, [load])
 
   // Focus name field when form opens

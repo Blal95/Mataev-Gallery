@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LocationMap } from "./LocationMap"
 import { PhotoComments } from "./PhotoComments"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
@@ -45,7 +45,11 @@ export function PhotoDetail({
 }) {
   const router = useRouter()
   const [info, setInfo] = useState(false)
+  // sessionStorage is unavailable during SSR, so the persisted info-panel
+  // state has to load in an effect — a lazy useState initializer would render
+  // different HTML on the server and trip hydration.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInfo(sessionStorage.getItem("detail-info") === "1")
   }, [])
   const [transitioning, setTransitioning] = useState(false)
@@ -67,6 +71,7 @@ export function PhotoDetail({
   const lastTapTime = useRef(0)
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // Discrete zoom changes (double-tap, keys, reset) animate; continuous
   // gestures (pinch, wheel, drag) must track the pointer with no easing.
@@ -93,16 +98,23 @@ export function PhotoDetail({
     const py = cy - (z1 / z0) * (cy - panRef.current.y)
     applyZoom(z1, px, py, smooth)
   }
-  if (seenId !== photo.id) {
-    setSeenId(photo.id); setTransitioning(false); setShowComments(false)
-    zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
-    setZoom(1); setPanX(0); setPanY(0)
-  }
-
   const videoRef = useRef<HTMLVideoElement>(null)
   const [canPlay, setCanPlay] = useState(false)
   const [largeLoaded, setLargeLoaded] = useState(false)
   const isVideo = photo.mediaType === "video"
+
+  // Render-time reset when navigating between photos (the React-endorsed
+  // alternative to a photo.id effect — no flash of stale zoom/video state).
+  // The refs mirror zoom/pan state for gesture math and must reset in the
+  // same pass, hence the targeted disable.
+  if (seenId !== photo.id) {
+    setSeenId(photo.id); setTransitioning(false); setShowComments(false)
+    // eslint-disable-next-line react-hooks/refs
+    zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
+    setZoom(1); setPanX(0); setPanY(0)
+    setCanPlay(false); setVideoTime(0); setIsPlaying(false)
+    setLargeLoaded(false)
+  }
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
   const placeholder = thumbhashToUrl(photo.thumbhash)
@@ -252,12 +264,49 @@ export function PhotoDetail({
   // Reset any page-level pinch zoom carried over from the gallery and keep
   // page zoom locked while the detail view is open — zooming in here is the
   // custom transform kind. Restored on close so the feed stays zoomable.
-  useEffect(() => {
+  // useLayoutEffect (not useEffect) so this fires before the first paint;
+  // useEffect fires after paint, meaning the user would see the modal zoomed in
+  // for one frame before the viewport snapped back.
+  // minimum-scale + maximum-scale both set to 1 forces the viewport to snap
+  // exactly to scale=1 on iOS and Android.
+  useLayoutEffect(() => {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]')
     if (!meta) return
     const original = meta.content
-    meta.content = "width=device-width, initial-scale=1, maximum-scale=1"
+    meta.content = "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"
     return () => { meta.content = original }
+  }, [])
+
+  // Desktop browsers ignore the viewport meta tag entirely, and there is no
+  // JS API to reset trackpad pinch zoom (window.visualViewport is read-only).
+  // Instead, counter-transform the detail view: translate it to the visual
+  // viewport's origin and scale it by 1/scale, so it renders at apparent
+  // scale 1 and fills the screen regardless of any lingering pinch zoom.
+  // The element's CSS size equals the layout viewport, so after scaling by
+  // 1/scale its footprint exactly matches the visible region.
+  // Cleared on close so the gallery keeps the user's zoom level.
+  useLayoutEffect(() => {
+    const vv = window.visualViewport
+    const el = rootRef.current
+    if (!vv || !el) return
+    const apply = () => {
+      if (vv.scale > 1.001) {
+        el.style.transformOrigin = "0 0"
+        el.style.transform = `translate(${vv.offsetLeft}px, ${vv.offsetTop}px) scale(${1 / vv.scale})`
+      } else {
+        el.style.transform = ""
+        el.style.transformOrigin = ""
+      }
+    }
+    apply()
+    vv.addEventListener("resize", apply)
+    vv.addEventListener("scroll", apply)
+    return () => {
+      vv.removeEventListener("resize", apply)
+      vv.removeEventListener("scroll", apply)
+      el.style.transform = ""
+      el.style.transformOrigin = ""
+    }
   }, [])
 
   // Cancel a pending single-tap action on unmount
@@ -284,10 +333,9 @@ export function PhotoDetail({
     return () => clearTimeout(t)
   }, [isVideo, canPlay])
 
-  // Reset large-image loaded state when photo changes. Includes a safety
-  // timeout so blur removes even if onLoad never fires (e.g. cached image).
+  // Safety timeout so blur removes even if onLoad never fires (e.g. cached
+  // image). The reset itself happens in the render-time seenId block above.
   useEffect(() => {
-    setLargeLoaded(false)
     const t = setTimeout(() => setLargeLoaded(true), 1500)
     return () => clearTimeout(t)
   }, [photo.id])
@@ -359,15 +407,12 @@ export function PhotoDetail({
     }
   }, [])
 
-  // Pause + reset when navigating away
+  // Pause playback when navigating away — playback state itself resets in
+  // the render-time seenId block above.
   useEffect(() => {
     if (!isVideo) return
     videoRef.current?.pause()
-    setCanPlay(false)
-    setVideoTime(0)
-    setIsPlaying(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photo.id])
+  }, [photo.id, isVideo])
 
   const takenDate = photo.takenAt ? new Date(photo.takenAt) : null
   const date = takenDate
@@ -402,7 +447,7 @@ export function PhotoDetail({
   const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-bg">
+    <div ref={rootRef} className="flex h-dvh w-full overflow-hidden bg-bg">
       {/* Progress bar */}
       <div
         aria-hidden
@@ -680,41 +725,47 @@ export function PhotoDetail({
         </div>
       )}
 
-      {/* Caption + location + date — directly below image (mobile/tablet) */}
-      {!info && (photo.caption || locationLine || date) && (
-        <div className="relative z-20 shrink-0 bg-bg px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6 sm:pt-4 lg:hidden">
-          {photo.caption && (
-            <>
-              <p className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
-              <p className="mb-3 line-clamp-2 font-serif text-[19px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
-                {photo.caption}
-              </p>
-            </>
-          )}
-          {(locationLine || date) && (
-            <div className="flex items-center justify-between gap-3">
-              {locationLine ? (
-                <a
-                  href={photo.lat != null && photo.lon != null
-                    ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
-                    : "/atlas"}
-                  className="group/loc flex min-w-0 items-center gap-1.5 py-1"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                  </svg>
-                  <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors group-hover/loc:text-amber">
-                    {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
-                  </span>
-                </a>
-              ) : <span />}
-              {date && (
-                <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
-                  {date}
-                </span>
+      {/* Caption + location + date — directly below image (mobile/tablet).
+          Uses the same grid-rows trick as the info sheet but inverted: collapses
+          to 0fr when info opens so both panels animate simultaneously. */}
+      {(photo.caption || locationLine || date) && (
+        <div className={`relative z-20 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${info ? "pointer-events-none grid-rows-[0fr]" : "grid-rows-[1fr]"}`}>
+          <div className="overflow-hidden">
+            <div className="bg-bg px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6 sm:pt-4">
+              {photo.caption && (
+                <>
+                  <p className="mb-1.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
+                  <p className="mb-3 line-clamp-2 font-serif text-[19px] italic leading-[1.3] tracking-[-0.01em] text-text sm:text-[23px]">
+                    {photo.caption}
+                  </p>
+                </>
+              )}
+              {(locationLine || date) && (
+                <div className="flex items-center justify-between gap-3">
+                  {locationLine ? (
+                    <a
+                      href={photo.lat != null && photo.lon != null
+                        ? `/atlas?lat=${photo.lat}&lon=${photo.lon}&z=13&slug=${photo.slug}`
+                        : "/atlas"}
+                      className="group/loc flex min-w-0 items-center gap-1.5 py-1"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-[10px] w-[10px] shrink-0 text-amber/50 transition-colors group-hover/loc:text-amber" aria-hidden>
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                      </svg>
+                      <span className="truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors group-hover/loc:text-amber">
+                        {flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}
+                      </span>
+                    </a>
+                  ) : <span />}
+                  {date && (
+                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-muted/60">
+                      {date}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       )}
 

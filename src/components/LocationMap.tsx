@@ -18,11 +18,13 @@ export function LocationMap({
   lon,
   zoom = 9,
   className,
+  interactive = true,
 }: {
   lat: number
   lon: number
   zoom?: number
   className?: string
+  interactive?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -38,11 +40,13 @@ export function LocationMap({
       map = L.map(ref.current, {
         center: [lat, lon],
         zoom,
-        zoomControl: true,
-        attributionControl: false, // credited in the caption instead (tiny box)
-        scrollWheelZoom: false, // don't hijack page scroll
-        dragging: true,
-        doubleClickZoom: true,
+        zoomControl: interactive,
+        attributionControl: false,
+        scrollWheelZoom: false,
+        dragging: interactive,
+        doubleClickZoom: interactive,
+        touchZoom: interactive,
+        keyboard: false,
       })
 
       L.tileLayer(
@@ -54,14 +58,18 @@ export function LocationMap({
         }
       ).addTo(map)
 
-      // Amber locator dot — a divIcon so we ship no marker image assets.
+      // Concentric-ring amber locator — outer ring + bright center dot with glow.
       L.marker([lat, lon], {
         keyboard: false,
         icon: L.divIcon({
           className: "",
-          iconSize: [14, 14],
-          iconAnchor: [7, 7],
-          html: '<div style="width:14px;height:14px;border-radius:9999px;background:#e3a857;box-shadow:0 0 0 4px rgba(227,168,87,0.22),0 0 14px #e3a857"></div>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+          html:
+            '<div style="width:18px;height:18px;position:relative;display:flex;align-items:center;justify-content:center">' +
+            '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(227,168,87,0.08);border:1.5px solid rgba(227,168,87,0.32)"></div>' +
+            '<div style="width:7px;height:7px;border-radius:50%;background:#e3a857;box-shadow:0 0 0 2px rgba(227,168,87,0.28),0 0 9px rgba(227,168,87,0.72)"></div>' +
+            '</div>',
         }),
       }).addTo(map)
     })()
