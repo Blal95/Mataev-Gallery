@@ -127,7 +127,7 @@ export function PhotoDetail({
 
   // Info sheet only exists below lg — desktop has the permanent sidebar
   const toggleInfo = () => {
-    if (typeof window !== "undefined" && window.innerWidth >= 1024) return
+    if (typeof window !== "undefined" && (window.innerWidth >= 1024 || window.matchMedia("(orientation: landscape)").matches)) return
     setInfo((v) => !v)
   }
 
@@ -230,7 +230,7 @@ export function PhotoDetail({
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
       if (e.key === "ArrowLeft" && prev) goto(prev.slug)
       if (e.key === "ArrowRight" && next) goto(next.slug)
-      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024) setInfo((v) => !v)
+      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024 && !window.matchMedia("(orientation: landscape)").matches) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
       if (e.key === "+" || e.key === "=") zoomAt(window.innerWidth / 2, window.innerHeight / 2, Math.min(5, zoomRef.current * 1.4), true)
@@ -459,7 +459,7 @@ export function PhotoDetail({
       />
 
       {/* Desktop sidebar — always visible on lg+, all metadata lives here */}
-      <aside className="relative z-30 hidden w-[340px] shrink-0 border-r border-line bg-bg-2/50 lg:flex lg:flex-col">
+      <aside className="relative z-30 hidden w-[260px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6">
           {/* Frame counter */}
           <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber">
@@ -589,14 +589,14 @@ export function PhotoDetail({
 
       {/* Header */}
       <div className="relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber lg:invisible">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber landscape:invisible lg:invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
         </span>
         {!info && (
           <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
             <span className="text-muted-2">← →</span> previous / next
-            <span className="lg:hidden">
+            <span className="landscape:hidden lg:hidden">
               <span className="mx-2 text-line-2">·</span>
               <span className="text-muted-2">I</span> details
             </span>
@@ -612,7 +612,7 @@ export function PhotoDetail({
           <button
             onClick={toggleInfo}
             aria-pressed={info}
-            className={`ml-1 mr-0.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
+            className={`ml-1 mr-0.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors landscape:hidden lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
           >
             <Icon d="M12 16v-5M12 8h.01" className="h-3.5 w-3.5" /> Info
           </button>
@@ -728,7 +728,7 @@ export function PhotoDetail({
           Uses the same grid-rows trick as the info sheet but inverted: collapses
           to 0fr when info opens so both panels animate simultaneously. */}
       {(photo.caption || locationLine || date) && (
-        <div className={`relative z-20 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${info ? "pointer-events-none grid-rows-[0fr]" : "grid-rows-[1fr]"}`}>
+        <div className={`relative z-20 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] landscape:hidden lg:hidden ${info ? "pointer-events-none grid-rows-[0fr]" : "grid-rows-[1fr]"}`}>
           <div className="overflow-hidden">
             <div className="bg-bg px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 sm:px-7 sm:pb-6 sm:pt-4">
               {photo.caption && (
@@ -772,7 +772,7 @@ export function PhotoDetail({
           shrinks the stage and the whole frame stays visible; desktop uses sidebar */}
       <div
         aria-hidden={!info}
-        className={`relative z-40 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
+        className={`relative z-40 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] landscape:hidden lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
       >
         <div className="overflow-hidden">
           <div className="border-t border-line-2 bg-bg-2 pb-[env(safe-area-inset-bottom)]">

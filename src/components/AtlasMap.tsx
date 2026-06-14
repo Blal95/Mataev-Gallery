@@ -62,6 +62,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         scrollWheelZoom: true,
         worldCopyJump: true,
         minZoom: 2,
+        preferCanvas: true,
       })
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
@@ -80,9 +81,9 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           if (!geo || cancelled || !map) return
           L.geoJSON(geo, {
             style: {
-              color: "#e3a857",
-              weight: 2,
-              opacity: 0.85,
+              color: "#ffffff",
+              weight: 1,
+              opacity: 0.6,
               fillOpacity: 0,
             },
             interactive: false,
