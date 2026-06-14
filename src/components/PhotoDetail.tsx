@@ -599,10 +599,22 @@ export function PhotoDetail({
       </aside>
 
       {/* Right column — stage + mobile chrome */}
-      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
 
-      {/* Header */}
-      <div className="relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-[max(0.875rem,env(safe-area-inset-top))] sm:px-6 sm:py-4">
+      {/* Portrait: floating gradient + controls overlay — zero in-flow height, photo gets full stage */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent landscape:hidden lg:hidden" />
+      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
+          Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
+          <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+        </span>
+        <button onClick={close} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
+          <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+
+      {/* Landscape/desktop in-flow header */}
+      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-[max(0.875rem,env(safe-area-inset-top))] landscape:flex sm:px-6 sm:py-4 lg:flex">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber landscape:invisible lg:invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -610,10 +622,6 @@ export function PhotoDetail({
         {!info && (
           <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
             <span className="text-muted-2">← →</span> previous / next
-            <span className="landscape:hidden lg:hidden">
-              <span className="mx-2 text-line-2">·</span>
-              <span className="text-muted-2">I</span> details
-            </span>
           </p>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
