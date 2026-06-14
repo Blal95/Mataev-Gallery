@@ -4,6 +4,7 @@ import { updatePhoto, setTags, deletePhoto } from "@/lib/photos"
 import { deletePhotoObjects } from "@/lib/r2"
 import { parseTags } from "@/lib/tags"
 import { sameOriginGuard as guard } from "@/lib/api"
+import { revalidatePath } from "next/cache"
 
 export const runtime = "nodejs"
 
@@ -26,6 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     gps_lon: body.lon === undefined ? undefined : body.lon,
   })
   if (body.tags != null) await setTags(database, id, parseTags(body.tags))
+  revalidatePath("/", "layout")
   return Response.json({ ok: true })
 }
 

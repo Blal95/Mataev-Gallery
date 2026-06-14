@@ -10,7 +10,7 @@ export function normalizeTag(raw: string): string {
 }
 
 export function parseTags(input: string): string[] {
-  const parts = input.split("#").flatMap((p) => p.split(/\s{2,}|,/))
+  const parts = input.split("#").slice(1).flatMap((p) => p.split(/\s{2,}|,/))
   const out: string[] = []
   for (const p of parts) {
     const t = normalizeTag(p)

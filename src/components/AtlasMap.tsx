@@ -83,8 +83,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
               color: "#e3a857",
               weight: 2,
               opacity: 0.85,
-              fillColor: "#e3a857",
-              fillOpacity: 0.06,
+              fillOpacity: 0,
             },
             interactive: false,
           }).addTo(map)
