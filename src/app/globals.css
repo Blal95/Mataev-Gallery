@@ -76,13 +76,14 @@ button:focus-visible {
   background: #110e0a;
 }
 
-/* grayscale(1) strips CARTO's cold blue cast, then a restrained sepia +
-   saturate pass warms the charcoal toward the palette without flooding the
-   ocean with mud-brown. Amber stays reserved for markers and accents.
-   will-change promotes each tile to its own compositor layer so pan/zoom
-   never triggers a CSS repaint across the whole map. */
+/* No grayscale — preserves CARTO's water/land colour differentiation so
+   lakes, rivers and seas read as subtly cooler-toned than land.
+   saturate(0.5) tones down the blue without eliminating it; sepia(0.25)
+   adds just enough warmth to land areas; contrast(1.2) sharpens the
+   water/terrain boundary. Amber stays reserved for markers.
+   will-change promotes each tile to its own compositor layer. */
 .leaflet-container .leaflet-tile {
-  filter: grayscale(1) sepia(0.45) saturate(1.3) brightness(0.82) contrast(1.08);
+  filter: brightness(0.78) contrast(1.2) saturate(0.5) sepia(0.25);
   will-change: transform;
 }
 
@@ -93,12 +94,6 @@ button:focus-visible {
   transform: translateZ(0);
 }
 
-/* Apply the same filter chain as the tiles so GeoJSON overlays (Chechnya
-   border) process through identical colour math — making them indistinguishable
-   from the admin lines baked into the raster tiles. */
-.leaflet-overlay-pane {
-  filter: grayscale(1) sepia(0.45) saturate(1.3) brightness(0.82) contrast(1.08);
-}
 
 /* Leaflet zoom controls — match the dark theme instead of stock white */
 .leaflet-bar {

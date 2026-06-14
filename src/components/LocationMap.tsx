@@ -55,6 +55,8 @@ export function LocationMap({
           subdomains: "abcd",
           maxZoom: 19,
           minZoom: 2,
+          updateWhenZooming: false,
+          keepBuffer: 2,
         }
       ).addTo(map)
 

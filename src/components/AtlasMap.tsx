@@ -63,12 +63,16 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         worldCopyJump: true,
         minZoom: 2,
         preferCanvas: true,
+        maxBounds: [[-85.051129, -180000], [85.051129, 180000]],
+        maxBoundsViscosity: 1.0,
       })
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         subdomains: "abcd",
         maxZoom: 19,
         minZoom: 2,
+        updateWhenZooming: false,
+        keepBuffer: 3,
       }).addTo(map)
 
       // Custom border: Chechnya drawn as its own country, extended to include
@@ -81,9 +85,9 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           if (!geo || cancelled || !map) return
           L.geoJSON(geo, {
             style: {
-              color: "#a09080",
-              weight: 1,
-              opacity: 0.7,
+              color: "#3d3528",
+              weight: 1.2,
+              opacity: 1,
               fillOpacity: 0,
             },
             interactive: false,
