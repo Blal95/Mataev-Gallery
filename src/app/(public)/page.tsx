@@ -1,14 +1,15 @@
 import { db } from "@/lib/db"
+import { cdnBase } from "@/lib/env"
 import { buildPhotosResponse } from "@/lib/api"
 import { GalleryFeed } from "@/components/GalleryFeed"
 import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 300
 
 export default async function Home() {
-  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), { limit: PAGE_SIZE, offset: 0 })
+  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), { limit: PAGE_SIZE, offset: 0 }, await cdnBase())
   return (
     <main>
       <TagIndex tags={tags} />

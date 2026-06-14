@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og"
 import { db } from "@/lib/db"
-import { cf } from "@/lib/env"
 import { getPhotoDTO } from "@/lib/detail"
 import {
   formatCamera,
@@ -52,11 +51,8 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   const { id } = await params
 
   let photo = null
-  let origin = "https://gallery.mataev.no"
   try {
     photo = await getPhotoDTO(await db(), id)
-    const env = await cf()
-    origin = env.RP_ORIGIN ?? origin
   } catch {}
 
   const caption = photo?.caption ?? null
@@ -66,7 +62,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   // WebP, so they render blank. The original is the only JPEG/PNG rendition, so
   // use it when the source format is decodable; otherwise leave the panel dark.
   const ogDecodable = photo ? /^(jpe?g|png)$/i.test(photo.format) : false
-  const imgUrl = ogDecodable ? `${origin}${photo!.url.original}` : ""
+  const imgUrl = ogDecodable ? photo!.url.original : ""
 
   // EXIF readout — same instrument-strip order as the on-site ExposureStrip.
   const exif = photo

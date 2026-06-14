@@ -2,12 +2,14 @@ import { cache } from "react"
 import type { SqlDb } from "./sqldb"
 import { listPhotos, getPhoto } from "./photos"
 import { rowToDTO } from "./serialize"
+import { cdnBase } from "./env"
 import type { PhotoDTO } from "@/types/photo"
 
 export const getDetail = cache(async (db: SqlDb, idOrSlug: string): Promise<{
   photo: PhotoDTO; prev: PhotoDTO | null; next: PhotoDTO | null; index: number; total: number
 } | null> => {
-  const all = (await listPhotos(db, {})).map(({ row, tags }) => rowToDTO(row, tags))
+  const base = await cdnBase()
+  const all = (await listPhotos(db, {})).map(({ row, tags }) => rowToDTO(row, tags, base))
   const index = all.findIndex((p) => p.id === idOrSlug || p.slug === idOrSlug)
   if (index < 0) return null
   // Only prev/next ship to the client — sending the whole gallery as props
@@ -23,5 +25,5 @@ export const getDetail = cache(async (db: SqlDb, idOrSlug: string): Promise<{
 
 export const getPhotoDTO = cache(async (db: SqlDb, idOrSlug: string): Promise<PhotoDTO | null> => {
   const found = await getPhoto(db, idOrSlug)
-  return found ? rowToDTO(found.row, found.tags) : null
+  return found ? rowToDTO(found.row, found.tags, await cdnBase()) : null
 })

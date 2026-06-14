@@ -6,9 +6,10 @@ import { rowToDTO } from "./serialize"
 export async function buildPhotosResponse(
   db: SqlDb,
   opts: { tag?: string; limit?: number; offset?: number; all?: boolean },
+  cdnBase: string,
 ): Promise<PhotosResponse> {
   const [list, tags] = await Promise.all([listPhotos(db, opts), listTagCounts(db)])
-  const photos = list.map(({ row, tags }) => rowToDTO(row, tags))
+  const photos = list.map(({ row, tags }) => rowToDTO(row, tags, cdnBase))
   const nextOffset =
     opts.limit != null
       ? photos.length === opts.limit
@@ -28,7 +29,7 @@ export function corsHeaders(origin: string | null, allowed: string[]): Record<st
   return h
 }
 
-export const PUBLIC_CACHE = "public, s-maxage=300, stale-while-revalidate=86400"
+export const PUBLIC_CACHE = "public, s-maxage=3600, stale-while-revalidate=86400"
 
 /**
  * CSRF guard for mutating routes. Sec-Fetch-Site covers modern browsers; the

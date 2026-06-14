@@ -14,12 +14,14 @@ const row = (id: string): PhotoRow => ({
   media_type: "photo", duration: null, views: 0,
 })
 
+const CDN = "https://cdn.test"
+
 describe("api", () => {
   it("builds the PhotosResponse with cdn urls + tag counts", async () => {
     const db = makeTestDb()
     await insertPhoto(db, row("p1"), ["norway"])
-    const res = await buildPhotosResponse(db,{})
-    expect(res.photos[0].url.thumb).toBe("/img/p1/thumb")
+    const res = await buildPhotosResponse(db,{}, CDN)
+    expect(res.photos[0].url.thumb).toBe("https://cdn.test/photos/p1/thumb.webp")
     expect(res.tags).toEqual([{ name: "norway", count: 1 }])
   })
   it("echoes an allowed origin in CORS headers", () => {
@@ -35,7 +37,7 @@ describe("api", () => {
   it("nextOffset is null when no limit given (backward compat)", async () => {
     const db = makeTestDb()
     await insertPhoto(db, row("p1"), [])
-    const res = await buildPhotosResponse(db,{})
+    const res = await buildPhotosResponse(db,{}, CDN)
     expect(res.nextOffset).toBeNull()
   })
   it("nextOffset equals offset+limit when page is full", async () => {
@@ -43,7 +45,7 @@ describe("api", () => {
     await insertPhoto(db, row("p1"), [])
     await insertPhoto(db, row("p2"), [])
     await insertPhoto(db, row("p3"), [])
-    const res = await buildPhotosResponse(db,{ limit: 2, offset: 0 })
+    const res = await buildPhotosResponse(db,{ limit: 2, offset: 0 }, CDN)
     expect(res.photos).toHaveLength(2)
     expect(res.nextOffset).toBe(2)
   })
@@ -51,18 +53,18 @@ describe("api", () => {
     const db = makeTestDb()
     await insertPhoto(db, row("p1"), [])
     await insertPhoto(db, row("p2"), [])
-    const res = await buildPhotosResponse(db,{ limit: 5, offset: 0 })
+    const res = await buildPhotosResponse(db,{ limit: 5, offset: 0 }, CDN)
     expect(res.photos).toHaveLength(2)
     expect(res.nextOffset).toBeNull()
   })
   it("nextOffset correctly advances on page 2", async () => {
     const db = makeTestDb()
     for (let i = 1; i <= 5; i++) await insertPhoto(db, row(`p${i}`), [])
-    const p1 = await buildPhotosResponse(db,{ limit: 2, offset: 0 })
+    const p1 = await buildPhotosResponse(db,{ limit: 2, offset: 0 }, CDN)
     expect(p1.nextOffset).toBe(2)
-    const p2 = await buildPhotosResponse(db,{ limit: 2, offset: p1.nextOffset! })
+    const p2 = await buildPhotosResponse(db,{ limit: 2, offset: p1.nextOffset! }, CDN)
     expect(p2.nextOffset).toBe(4)
-    const p3 = await buildPhotosResponse(db,{ limit: 2, offset: p2.nextOffset! })
+    const p3 = await buildPhotosResponse(db,{ limit: 2, offset: p2.nextOffset! }, CDN)
     expect(p3.photos).toHaveLength(1)
     expect(p3.nextOffset).toBeNull()
   })
@@ -70,7 +72,7 @@ describe("api", () => {
     const db = makeTestDb()
     await insertPhoto(db, row("p1"), ["norway"])
     await insertPhoto(db, row("p2"), ["lofoten"])
-    const res = await buildPhotosResponse(db,{ limit: 1, offset: 0 })
+    const res = await buildPhotosResponse(db,{ limit: 1, offset: 0 }, CDN)
     expect(res.tags).toHaveLength(2)
   })
 })

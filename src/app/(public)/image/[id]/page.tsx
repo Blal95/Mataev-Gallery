@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { getDetail } from "@/lib/detail"
 import { PhotoDetail } from "@/components/PhotoDetail"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 300
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   try {
@@ -47,8 +47,8 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
     "@context": "https://schema.org",
     "@type": "ImageObject",
     "url": `https://gallery.mataev.no/image/${photo.slug}`,
-    "contentUrl": `https://gallery.mataev.no${photo.url.original}`,
-    "thumbnailUrl": `https://gallery.mataev.no${photo.url.thumb}`,
+    "contentUrl": photo.url.original,
+    "thumbnailUrl": photo.url.thumb,
     "name": photo.caption ?? "Photograph",
     "author": { "@type": "Person", "name": "Bilal R. Mataev" },
     ...(photo.takenAt ? { "dateCreated": new Date(photo.takenAt).toISOString() } : {}),

@@ -1,18 +1,19 @@
 import { db } from "@/lib/db"
+import { cdnBase } from "@/lib/env"
 import { listPhotos } from "@/lib/photos"
 import { rowToDTO } from "@/lib/serialize"
 
 export const runtime = "nodejs"
-export const dynamic = "force-dynamic"
+export const revalidate = 3600
 
 const BASE = "https://gallery.mataev.no"
 
 export async function GET() {
   const database = await db()
-  const items = await listPhotos(database, { limit: 50 })
+  const [items, base] = await Promise.all([listPhotos(database, { limit: 50 }), cdnBase()])
 
   const itemsXml = items.map(({ row, tags }) => {
-    const dto = rowToDTO(row, tags)
+    const dto = rowToDTO(row, tags, base)
     const pubDate = row.created_at ? new Date(row.created_at).toUTCString() : new Date().toUTCString()
     const desc = [dto.caption, dto.place, dto.country].filter(Boolean).join(" · ") || "Photograph by Bilal R. Mataev"
     return `<item>
@@ -21,7 +22,7 @@ export async function GET() {
       <guid isPermaLink="true">${BASE}/image/${dto.slug}</guid>
       <pubDate>${pubDate}</pubDate>
       <description><![CDATA[${desc}]]></description>
-      <enclosure url="${BASE}${dto.url.large}" type="image/webp" length="0" />
+      <enclosure url="${dto.url.large}" type="image/webp" length="0" />
     </item>`
   }).join("\n")
 
