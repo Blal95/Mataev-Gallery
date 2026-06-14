@@ -53,7 +53,9 @@ export function PhotoDetail({
     setInfo(sessionStorage.getItem("detail-info") === "1")
   }, [])
   const [transitioning, setTransitioning] = useState(false)
-  const [isMuted, setIsMuted] = useState(true)
+  // Start unmuted: opening a photo is a user gesture, so most browsers allow
+  // audible autoplay. The autoplay effect falls back to muted if blocked.
+  const [isMuted, setIsMuted] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(photo.duration ?? 0)
@@ -69,7 +71,6 @@ export function PhotoDetail({
   const pinchStartZoom = useRef(1)
   const panStart = useRef<{ tx: number; ty: number; px: number; py: number } | null>(null)
   const lastTapTime = useRef(0)
-  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -144,7 +145,6 @@ export function PhotoDetail({
       pinchStartZoom.current = zoomRef.current
       touchStartX.current = null
       touchStartY.current = null
-      if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null }
       return
     }
     if (zoomRef.current > 1) {
@@ -169,24 +169,18 @@ export function PhotoDetail({
     touchStartX.current = null
     touchStartY.current = null
 
-    // Tap: little movement. Double-tap toggles zoom; single tap (after the
-    // double-tap window) toggles the info sheet.
+    // Tap: little movement. Double-tap toggles zoom; a single tap does nothing —
+    // info is opened via the header button, never by tapping the photo.
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-      // Taps on the video element belong to play/pause, not the info sheet
       if ((e.target as HTMLElement).tagName === "VIDEO") return
       const now = Date.now()
       if (now - lastTapTime.current < 300) {
         lastTapTime.current = 0
-        if (tapTimer.current) { clearTimeout(tapTimer.current); tapTimer.current = null }
         if (zoomRef.current > 1) resetZoom()
         else zoomAt(endX, endY, 2.5, true)
-        return
+      } else {
+        lastTapTime.current = now
       }
-      lastTapTime.current = now
-      tapTimer.current = setTimeout(() => {
-        tapTimer.current = null
-        toggleInfo()
-      }, 280)
       return
     }
 
@@ -309,9 +303,6 @@ export function PhotoDetail({
     }
   }, [])
 
-  // Cancel a pending single-tap action on unmount
-  useEffect(() => () => { if (tapTimer.current) clearTimeout(tapTimer.current) }, [])
-
   // Persist info panel open/close state across navigation
   useEffect(() => {
     sessionStorage.setItem("detail-info", info ? "1" : "0")
@@ -326,10 +317,20 @@ export function PhotoDetail({
     fetch(`/api/photos/${photo.id}/view`, { method: "POST" }).catch(() => {})
   }, [photo.id])
 
-  // Autoplay 1s after canplay fires
+  // Autoplay shortly after the video is ready. Try with sound first (opening the
+  // photo is a user gesture, so this is usually allowed); fall back to muted
+  // autoplay if the browser blocks audible playback.
   useEffect(() => {
     if (!isVideo || !canPlay) return
-    const t = setTimeout(() => { videoRef.current?.play().catch(() => {}) }, 1000)
+    const t = setTimeout(() => {
+      const v = videoRef.current
+      if (!v) return
+      v.play().catch(() => {
+        v.muted = true
+        setIsMuted(true)
+        v.play().catch(() => {})
+      })
+    }, 300)
     return () => clearTimeout(t)
   }, [isVideo, canPlay])
 
@@ -444,7 +445,9 @@ export function PhotoDetail({
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
   const locationLine = [photo.place, photo.country].filter(Boolean).join(", ")
 
-  const navBtn = "pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line-2/60 bg-bg/40 text-muted-2 opacity-80 backdrop-blur-sm transition-all hover:border-amber/60 hover:text-amber hover:opacity-100 sm:opacity-50 disabled:pointer-events-none disabled:opacity-0"
+  // Header nav buttons — prev/next live in the top bar so nothing ever overlays
+  // the photograph (mobile also swipes; desktop also uses arrow keys).
+  const hdrBtn = "inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-2 transition-colors hover:text-amber disabled:pointer-events-none disabled:opacity-25"
 
   return (
     <div ref={rootRef} className="flex h-dvh w-full overflow-hidden bg-bg">
@@ -599,35 +602,17 @@ export function PhotoDetail({
             </span>
           </p>
         )}
-        <div className="flex shrink-0 items-center gap-1">
-          {isVideo && (
-            <>
-              <button
-                onClick={togglePlayback}
-                aria-label={isPlaying ? "Pause" : "Play"}
-                className="inline-flex h-9 w-9 items-center justify-center text-muted-2 transition-colors hover:text-amber"
-              >
-                {isPlaying
-                  ? <Icon d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" className="h-4 w-4" />
-                  : <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-current"><path d="M8 5v14l11-7z" /></svg>
-                }
-              </button>
-              <button
-                onClick={() => setIsMuted((v) => !v)}
-                aria-label={isMuted ? "Unmute" : "Mute"}
-                className="inline-flex h-9 w-9 items-center justify-center text-muted-2 transition-colors hover:text-amber"
-              >
-                {isMuted
-                  ? <Icon d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" className="h-4 w-4" />
-                  : <Icon d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" className="h-4 w-4" />
-                }
-              </button>
-            </>
-          )}
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button onClick={() => prev && goto(prev.slug)} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
+            <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
+          </button>
+          <button onClick={() => next && goto(next.slug)} disabled={!next} aria-label="Next frame" className={hdrBtn}>
+            <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
+          </button>
           <button
             onClick={toggleInfo}
             aria-pressed={info}
-            className={`mr-1 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
+            className={`ml-1 mr-0.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors lg:hidden ${info ? "border-amber/60 bg-amber/10 text-amber" : "border-line-2 text-muted-2 hover:text-text"}`}
           >
             <Icon d="M12 16v-5M12 8h.01" className="h-3.5 w-3.5" /> Info
           </button>
@@ -691,17 +676,21 @@ export function PhotoDetail({
             />
           )}
         </div>
-
-        {/* Nav arrows */}
-        <div className="pointer-events-none absolute inset-y-0 left-2 right-2 z-20 flex items-center justify-between sm:left-4 sm:right-4">
-          {prev ? <button onClick={() => goto(prev.slug)} aria-label="Previous frame" className={navBtn}><Icon d="M15 18l-6-6 6-6" className="h-5 w-5" /></button> : <span className={navBtn} aria-hidden />}
-          {next ? <button onClick={() => goto(next.slug)} aria-label="Next frame" className={navBtn}><Icon d="M9 18l6-6-6-6" className="h-5 w-5" /></button> : <span className={navBtn} aria-hidden />}
-        </div>
       </div>
 
       {/* Video scrubber */}
       {isVideo && (
-        <div className="relative z-20 flex items-center gap-3 border-t border-line bg-bg px-4 py-2.5 sm:px-6">
+        <div className="relative z-20 flex items-center gap-3 border-t border-line bg-bg px-3 py-2.5 sm:px-5">
+          <button
+            onClick={togglePlayback}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-muted-2 transition-colors hover:text-amber"
+          >
+            {isPlaying
+              ? <Icon d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" className="h-4 w-4" />
+              : <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-current"><path d="M8 5v14l11-7z" /></svg>
+            }
+          </button>
           <span className="w-8 shrink-0 text-right font-mono text-[9px] tabular-nums text-muted">
             {formatDuration(videoTime) ?? "0:00"}
           </span>
@@ -722,6 +711,16 @@ export function PhotoDetail({
           <span className="w-8 shrink-0 font-mono text-[9px] tabular-nums text-muted">
             {formatDuration(videoDuration) ?? "0:00"}
           </span>
+          <button
+            onClick={() => setIsMuted((v) => !v)}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-muted-2 transition-colors hover:text-amber"
+          >
+            {isMuted
+              ? <Icon d="M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6" className="h-4 w-4" />
+              : <Icon d="M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" className="h-4 w-4" />
+            }
+          </button>
         </div>
       )}
 

@@ -81,11 +81,10 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
           L.geoJSON(geo, {
             style: {
               color: "#e3a857",
-              weight: 1.5,
-              opacity: 0.75,
-              dashArray: "6 4",
+              weight: 2,
+              opacity: 0.85,
               fillColor: "#e3a857",
-              fillOpacity: 0.05,
+              fillOpacity: 0.06,
             },
             interactive: false,
           }).addTo(map)
