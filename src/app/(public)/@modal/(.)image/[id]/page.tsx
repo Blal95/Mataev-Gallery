@@ -3,7 +3,7 @@ import { getDetail } from "@/lib/detail"
 import { PhotoDetail } from "@/components/PhotoDetail"
 import { ModalShell } from "@/components/ModalShell"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 300
 
 export default async function PhotoModal({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

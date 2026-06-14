@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og"
 import { db } from "@/lib/db"
-import { cf } from "@/lib/env"
 import { getPhotoDTO } from "@/lib/detail"
 import {
   formatCamera,
@@ -11,6 +10,9 @@ import {
 } from "@/lib/format"
 
 export const runtime = "edge"
+// Cache the generated card for a day so repeated social/crawler hits don't
+// re-render the PNG (Satori is CPU-heavy) on every request.
+export const revalidate = 86400
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
 
@@ -52,11 +54,8 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   const { id } = await params
 
   let photo = null
-  let origin = "https://gallery.mataev.no"
   try {
     photo = await getPhotoDTO(await db(), id)
-    const env = await cf()
-    origin = env.RP_ORIGIN ?? origin
   } catch {}
 
   const caption = photo?.caption ?? null
@@ -66,7 +65,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   // WebP, so they render blank. The original is the only JPEG/PNG rendition, so
   // use it when the source format is decodable; otherwise leave the panel dark.
   const ogDecodable = photo ? /^(jpe?g|png)$/i.test(photo.format) : false
-  const imgUrl = ogDecodable ? `${origin}${photo!.url.original}` : ""
+  const imgUrl = ogDecodable ? photo!.url.original : ""
 
   // EXIF readout — same instrument-strip order as the on-site ExposureStrip.
   const exif = photo

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db"
+import { cdnBase } from "@/lib/env"
 import { isAuthed } from "@/lib/authctx"
 import { buildPhotosResponse } from "@/lib/api"
 
@@ -9,6 +10,6 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams
   const limit = sp.get("limit") != null ? Math.max(1, parseInt(sp.get("limit")!, 10) || 1) : undefined
   const offset = sp.get("offset") != null ? Math.max(0, parseInt(sp.get("offset")!, 10) || 0) : undefined
-  const body = await buildPhotosResponse(await db(), { limit, offset, all: true })
+  const body = await buildPhotosResponse(await db(), { limit, offset, all: true }, await cdnBase())
   return Response.json(body)
 }

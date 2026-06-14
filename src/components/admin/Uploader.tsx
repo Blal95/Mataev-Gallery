@@ -157,6 +157,7 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         thumbhash,
         mediaType: it.mediaType,
         duration: it.duration,
+        originalContentType: originalFile.type || "application/octet-stream",
       }
 
       const fd = new FormData()
@@ -168,16 +169,37 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         const body = await res.text().catch(() => "")
         throw new Error(`POST ${res.status}: ${body.slice(0, 120)}`)
       }
-      const { id } = await res.json() as { id: string }
+      const { id, uploadUrl } = await res.json() as { id: string; uploadUrl?: string | null }
 
-      const putRes = await fetch(`/api/admin/upload/${id}/original`, {
-        method: "PUT",
-        headers: { "Content-Type": originalFile.type || "application/octet-stream" },
-        body: originalFile,
-      })
-      if (!putRes.ok) {
-        const body = await putRes.text().catch(() => "")
-        throw new Error(`PUT ${putRes.status}: ${body.slice(0, 120)}`)
+      const contentType = originalFile.type || "application/octet-stream"
+
+      // Preferred path: PUT the original straight to R2 via the presigned URL,
+      // bypassing the Worker's request-size/CPU limits. Fall back to the Worker
+      // route if no URL was issued or the direct upload fails (e.g. R2 CORS not
+      // yet configured) — that path still works for files under the 100MB limit.
+      let uploaded = false
+      if (uploadUrl) {
+        try {
+          const r2Res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": contentType, "Cache-Control": "public, max-age=31536000, immutable" },
+            body: originalFile,
+          })
+          uploaded = r2Res.ok
+        } catch {
+          uploaded = false
+        }
+      }
+      if (!uploaded) {
+        const putRes = await fetch(`/api/admin/upload/${id}/original`, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: originalFile,
+        })
+        if (!putRes.ok) {
+          const body = await putRes.text().catch(() => "")
+          throw new Error(`PUT ${putRes.status}: ${body.slice(0, 120)}`)
+        }
       }
       patch(i, { status: "done", errorMsg: null }); onUploaded()
     } catch (err) {

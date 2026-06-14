@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { allowedOrigins } from "@/lib/env"
+import { allowedOrigins, cdnBase } from "@/lib/env"
 import { buildPhotosResponse, corsHeaders, PUBLIC_CACHE } from "@/lib/api"
 
 export const runtime = "nodejs"
@@ -12,8 +12,8 @@ export async function GET(req: Request) {
   const offsetRaw = sp.get("offset")
   const limit = limitRaw != null ? Math.max(1, parseInt(limitRaw, 10) || 1) : undefined
   const offset = offsetRaw != null ? Math.max(0, parseInt(offsetRaw, 10) || 0) : undefined
-  const [database, origins] = await Promise.all([db(), allowedOrigins()])
-  const body = await buildPhotosResponse(database, { tag, limit, offset })
+  const [database, origins, base] = await Promise.all([db(), allowedOrigins(), cdnBase()])
+  const body = await buildPhotosResponse(database, { tag, limit, offset }, base)
   return Response.json(body, {
     headers: { ...corsHeaders(origin, origins), "Cache-Control": PUBLIC_CACHE },
   })

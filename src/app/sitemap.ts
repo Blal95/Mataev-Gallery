@@ -8,7 +8,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // doesn't break the module graph — caught by the outer try/catch.
     const { db } = await import("@/lib/db")
     const { listPhotos, listTagCounts } = await import("@/lib/photos")
-    const { rowToDTO } = await import("@/lib/serialize")
 
     const dbInst = await db()
 
@@ -17,10 +16,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       listTagCounts(dbInst),
     ])
 
-    const photoUrls: MetadataRoute.Sitemap = photosWithTags.map(({ row, tags }) => {
-      const dto = rowToDTO(row, tags)
+    const photoUrls: MetadataRoute.Sitemap = photosWithTags.map(({ row }) => {
       return {
-        url: `${BASE}/image/${dto.slug}`,
+        url: `${BASE}/image/${row.slug}`,
         lastModified: (() => {
           if (!row.created_at) return undefined
           const d = new Date(row.created_at)

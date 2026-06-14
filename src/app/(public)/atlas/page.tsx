@@ -1,11 +1,12 @@
 import type { Metadata } from "next"
 import { db } from "@/lib/db"
+import { cdnBase } from "@/lib/env"
 import { listGeoPhotos } from "@/lib/photos"
 import { AtlasMap, type AtlasPin } from "@/components/AtlasMap"
 import { EmptyState } from "@/components/EmptyState"
 import { NoScroll } from "@/components/NoScroll"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 300
 
 export const metadata: Metadata = {
   title: "Atlas — Mataev",
@@ -22,12 +23,12 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
   const initialZoom = sp.z ? parseInt(sp.z) : 11
   const selectedSlug = sp.slug ?? null
 
-  const geo = await listGeoPhotos(await db())
+  const [geo, base] = await Promise.all([listGeoPhotos(await db()), cdnBase()])
   const pins: AtlasPin[] = geo.map((p) => ({
     slug: p.slug,
     lat: p.lat,
     lon: p.lon,
-    thumb: `/img/${p.slug}/thumb`,
+    thumb: `${base}/${p.thumb}`,
     caption: p.caption,
     place: p.place,
     countryCode: p.countryCode,

@@ -12,6 +12,14 @@ binding = "PHOTOS"
 bucket_name = "gallery-photos"
 remote = true
 
+# Incremental (ISR) cache for rendered pages. Kept in a separate bucket from
+# the public photos bucket so cached HTML is never exposed on cdn.gallery.mataev.no.
+# Create once with: wrangler r2 bucket create gallery-cache
+[[r2_buckets]]
+binding = "NEXT_INC_CACHE_R2_BUCKET"
+bucket_name = "gallery-cache"
+remote = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "gallery"
