@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react"
 
-const SHORTCUTS = [
+const SHORTCUTS: { key: string; desc: string; mobileOnly?: boolean }[] = [
   { key: "← / →", desc: "Navigate" },
-  { key: "I", desc: "Details" },
+  { key: "I", desc: "Details", mobileOnly: true },
   { key: "+ / −", desc: "Zoom" },
   { key: "0", desc: "Reset zoom" },
   { key: "Esc", desc: "Close / dismiss" },
@@ -13,6 +13,9 @@ const SHORTCUTS = [
 
 export function ShortcutsOverlay() {
   const [open, setOpen] = useState(false)
+  const isPortraitMobile = typeof window !== "undefined"
+    && window.innerWidth < 1024
+    && !window.matchMedia("(orientation: landscape)").matches
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -48,7 +51,7 @@ export function ShortcutsOverlay() {
           Shortcuts
         </h2>
         <ul className="space-y-3">
-          {SHORTCUTS.map(({ key, desc }) => (
+          {SHORTCUTS.filter(s => !s.mobileOnly || isPortraitMobile).map(({ key, desc }) => (
             <li key={key} className="flex items-center justify-between gap-4">
               <kbd className="rounded-[3px] border border-line-2 bg-bg px-2 py-0.5 font-mono text-[11px] text-cyan">
                 {key}

@@ -5,15 +5,15 @@ import "./globals.css"
 const serif = Playfair_Display({
   subsets: ["latin"],
   display: "swap",
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600", "700"],
+  style: ["italic"],   // only italic is used across the entire site
+  weight: ["400"],
   variable: "--font-playfair",
 })
 
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],   // 600 is unused
   variable: "--font-jetbrains",
 })
 
@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${serif.variable} ${mono.variable}`}>
       <head>
+        <link rel="dns-prefetch" href="https://flagcdn.com" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}

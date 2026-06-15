@@ -27,6 +27,7 @@ export interface PhotoDTO {
   focal: number | null; fNumber: number | null; exposure: number | null; iso: number | null
   bytes: number; format: string
   published: boolean
+  visibility: 0 | 1 | 2  // 0=draft, 1=public, 2=tag_only
   tags: string[]
   mediaType: 'photo' | 'video'
   duration: number | null

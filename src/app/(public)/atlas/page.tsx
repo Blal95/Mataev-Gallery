@@ -6,7 +6,7 @@ import { AtlasMap, type AtlasPin } from "@/components/AtlasMap"
 import { EmptyState } from "@/components/EmptyState"
 import { NoScroll } from "@/components/NoScroll"
 
-export const revalidate = 300
+export const revalidate = 3600
 
 export const metadata: Metadata = {
   title: "Atlas — Mataev",

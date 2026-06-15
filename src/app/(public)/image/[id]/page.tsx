@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { getDetail } from "@/lib/detail"
 import { PhotoDetail } from "@/components/PhotoDetail"
 
-export const revalidate = 300
+export const revalidate = 3600
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   try {

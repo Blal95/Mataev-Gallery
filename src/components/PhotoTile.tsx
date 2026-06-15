@@ -13,7 +13,7 @@ function Tick({ pos }: { pos: string }) {
 export function PhotoTile({
   photo, width, index, priority,
 }: { photo: PhotoDTO; width: number; index: number; priority?: boolean }) {
-  const delay = `${Math.min(index, 24) * 28}ms`
+  const delay = `${Math.min(index, 8) * 30}ms`
   const [loaded, setLoaded] = useState(false)
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const colW = Math.round(width)

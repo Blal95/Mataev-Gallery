@@ -8,7 +8,7 @@ import type { CommentDTO } from "@/lib/comments"
 export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSaved: () => void; onDeleted: () => void }) {
   const [caption, setCaption] = useState(photo.caption ?? "")
   const [tags, setTags] = useState(photo.tags.map((t) => `#${t}`).join(" "))
-  const [published, setPublished] = useState(photo.published)
+  const [visibility, setVisibility] = useState<0 | 1 | 2>(photo.visibility)
   const [location, setLocation] = useState<LocationValue>({
     lat: photo.lat,
     lon: photo.lon,
@@ -44,7 +44,7 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
         countryCode: location.countryCode || null,
         lat: location.lat,
         lon: location.lon,
-        published: published ? 1 : 0,
+        published: visibility,
       }),
     }).catch(() => null)
     setBusy(false)
@@ -66,13 +66,22 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
       <LocationPicker value={location} onChange={setLocation} />
       <div className="flex items-center gap-2">
         <button onClick={save} disabled={busy} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">Save</button>
-        <button
-          type="button"
-          onClick={() => setPublished((v) => !v)}
-          className={`rounded border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors ${published ? "border-amber/40 bg-amber/10 text-amber" : "border-line-2 text-muted hover:border-line-2 hover:text-muted-2"}`}
-        >
-          {published ? "Published" : "Draft"}
-        </button>
+        <div className="flex rounded border border-line overflow-hidden">
+          {([
+            [0, "Draft", "border-amber/40 bg-amber/10 text-amber"],
+            [1, "Public", "border-cyan/40 bg-cyan/10 text-cyan"],
+            [2, "Tag only", "border-line-2 bg-bg-2 text-text"],
+          ] as const).map(([v, label, activeClass]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setVisibility(v)}
+              className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors border-r last:border-r-0 border-line ${visibility === v ? activeClass : "text-muted hover:text-text"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <button onClick={remove} disabled={busy} className="ml-auto rounded border border-danger/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
       </div>
       {comments.length > 0 && (

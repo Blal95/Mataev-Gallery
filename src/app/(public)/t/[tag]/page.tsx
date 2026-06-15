@@ -7,13 +7,27 @@ import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const revalidate = 300
+export const revalidate = 3600
 
 export default async function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = await params
-  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), { tag, limit: PAGE_SIZE, offset: 0 }, await cdnBase())
+  const base = await cdnBase()
+  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), { tag, limit: PAGE_SIZE, offset: 0 }, base)
   if (!tags.some((t) => t.name === tag) && photos.length === 0) notFound()
+
+  let cdnOrigin: string | null = null
+  try { cdnOrigin = new URL(base).origin } catch { /* ignore */ }
+
   return (
+    <>
+      {cdnOrigin && <link rel="preconnect" href={cdnOrigin} crossOrigin="anonymous" />}
+      {cdnOrigin && <link rel="dns-prefetch" href={cdnOrigin} />}
+      {photos.slice(0, 6).map((p) => (
+        <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="high" />
+      ))}
+      {photos.slice(6, 24).map((p) => (
+        <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="low" />
+      ))}
     <main>
       <TagIndex tags={tags} active={tag} />
       <div className="pt-3.5">
@@ -24,5 +38,6 @@ export default async function TagPage({ params }: { params: Promise<{ tag: strin
         )}
       </div>
     </main>
+    </>
   )
 }

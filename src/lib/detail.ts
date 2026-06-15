@@ -9,7 +9,7 @@ export const getDetail = cache(async (db: SqlDb, idOrSlug: string): Promise<{
   photo: PhotoDTO; prev: PhotoDTO | null; next: PhotoDTO | null; index: number; total: number
 } | null> => {
   const base = await cdnBase()
-  const all = (await listPhotos(db, {})).map(({ row, tags }) => rowToDTO(row, tags, base))
+  const all = (await listPhotos(db, { homeOnly: false })).map(({ row, tags }) => rowToDTO(row, tags, base))
   const index = all.findIndex((p) => p.id === idOrSlug || p.slug === idOrSlug)
   if (index < 0) return null
   // Only prev/next ship to the client — sending the whole gallery as props

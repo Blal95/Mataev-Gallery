@@ -51,13 +51,14 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
 
 export async function listPhotos(
   db: SqlDb,
-  opts: { tag?: string; limit?: number; offset?: number; all?: boolean },
+  opts: { tag?: string; limit?: number; offset?: number; all?: boolean; homeOnly?: boolean },
 ): Promise<PhotoWithTags[]> {
   const off = opts.offset ?? 0
   const pagination = opts.limit != null ? ` LIMIT ? OFFSET ?` : ""
   const bindsExtra: unknown[] = opts.limit != null ? [opts.limit, off] : []
-  const pubFilter = opts.all ? "" : " AND p.published = 1"
-  const pubWhere = opts.all ? "" : " WHERE published = 1"
+  // home feed: published=1 only. navigation pool / tag pages: IN (1,2) includes tag_only.
+  const pubFilterTag = opts.all ? "" : " AND p.published IN (1, 2)"
+  const pubWhere = opts.all ? "" : opts.homeOnly !== false ? " WHERE published = 1" : " WHERE published IN (1, 2)"
 
   let rows: PhotoRow[]
   if (opts.tag) {
@@ -65,7 +66,7 @@ export async function listPhotos(
       .prepare(
         `SELECT ${COLS.split(",").map((c) => "p." + c).join(",")} FROM photos p
          JOIN photo_tags pt ON pt.photo_id = p.id JOIN tags t ON t.id = pt.tag_id
-         WHERE t.name = ?${pubFilter} ORDER BY p.taken_at DESC, p.created_at DESC${pagination}`,
+         WHERE t.name = ?${pubFilterTag} ORDER BY p.taken_at DESC, p.created_at DESC${pagination}`,
       )
       .bind(opts.tag, ...bindsExtra)
       .all<PhotoRow>()
@@ -103,7 +104,7 @@ export async function listGeoPhotos(db: SqlDb): Promise<GeoPhoto[]> {
     .prepare(
       `SELECT slug, gps_lat AS lat, gps_lon AS lon, r2_thumb AS thumb, caption, place, country_code AS countryCode
        FROM photos
-       WHERE published = 1 AND gps_lat IS NOT NULL AND gps_lon IS NOT NULL
+       WHERE published IN (1, 2) AND gps_lat IS NOT NULL AND gps_lon IS NOT NULL
        ORDER BY taken_at DESC, created_at DESC`,
     )
     .all<GeoPhoto>()
@@ -115,7 +116,7 @@ export async function getPhoto(
   id: string,
   opts: { all?: boolean } = {},
 ): Promise<PhotoWithTags | null> {
-  const pubFilter = opts.all ? "" : " AND published = 1"
+  const pubFilter = opts.all ? "" : " AND published IN (1, 2)"
   const row = await db
     .prepare(`SELECT ${COLS} FROM photos WHERE (id = ? OR slug = ?)${pubFilter}`)
     .bind(id, id)
@@ -129,8 +130,26 @@ export async function listTagCounts(db: SqlDb): Promise<{ name: string; count: n
   const { results } = await db
     .prepare(
       `SELECT t.name AS name, COUNT(pt.photo_id) AS count FROM tags t
-       JOIN photo_tags pt ON pt.tag_id = t.id JOIN photos p ON p.id = pt.photo_id AND p.published = 1
+       JOIN photo_tags pt ON pt.tag_id = t.id JOIN photos p ON p.id = pt.photo_id AND p.published IN (1, 2)
        GROUP BY t.id HAVING count > 0 ORDER BY count DESC, t.name ASC`,
+    )
+    .all<{ name: string; count: number }>()
+  return results
+}
+
+export async function deleteTag(db: SqlDb, name: string): Promise<void> {
+  const row = await db.prepare("SELECT id FROM tags WHERE name = ?").bind(name).first<{ id: number }>()
+  if (!row) return
+  await db.prepare("DELETE FROM photo_tags WHERE tag_id = ?").bind(row.id).run()
+  await db.prepare("DELETE FROM tags WHERE id = ?").bind(row.id).run()
+}
+
+export async function listAllTags(db: SqlDb): Promise<{ name: string; count: number }[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT t.name AS name, COUNT(pt.photo_id) AS count FROM tags t
+       LEFT JOIN photo_tags pt ON pt.tag_id = t.id
+       GROUP BY t.id ORDER BY count DESC, t.name ASC`,
     )
     .all<{ name: string; count: number }>()
   return results

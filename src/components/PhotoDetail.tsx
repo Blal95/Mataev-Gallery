@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { LocationMap } from "./LocationMap"
+import dynamic from "next/dynamic"
+const LocationMap = dynamic(() => import("./LocationMap").then(m => ({ default: m.LocationMap })), { ssr: false })
 import { PhotoComments } from "./PhotoComments"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
 import { flagEmoji, flagUrl, displayCountry, isInChechnya, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
@@ -21,8 +22,8 @@ function Icon({ d, className }: { d: string; className?: string }) {
 /** Archive-card section: micro eyebrow label over content, hairline rule above. */
 function Section({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`border-t border-line pt-4 ${className}`}>
-      <p className="mb-2.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">{label}</p>
+    <section className={`border-t border-line pt-4 max-lg:landscape:pt-2.5 ${className}`}>
+      <p className="mb-2.5 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60 max-lg:landscape:mb-1.5">{label}</p>
       {children}
     </section>
   )
@@ -53,6 +54,7 @@ export function PhotoDetail({
     setInfo(sessionStorage.getItem("detail-info") === "1")
   }, [])
   const [transitioning, setTransitioning] = useState(false)
+  const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
   // Start unmuted: opening a photo is a user gesture, so most browsers allow
   // audible autoplay. The autoplay effect falls back to muted if blocked.
   const [isMuted, setIsMuted] = useState(false)
@@ -74,7 +76,9 @@ export function PhotoDetail({
   const stageRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const infoRef = useRef<HTMLDivElement>(null)
+  const dragHandleRef = useRef<HTMLDivElement>(null)
   const bottomBarRef = useRef<HTMLDivElement>(null)
+  const spacerRef = useRef<HTMLDivElement>(null)
 
   // Discrete zoom changes (double-tap, keys, reset) animate; continuous
   // gestures (pinch, wheel, drag) must track the pointer with no easing.
@@ -133,8 +137,9 @@ export function PhotoDetail({
     setInfo((v) => !v)
   }
 
-  const goto = (slug: string) => {
+  const goto = (slug: string, dir?: 'left' | 'right') => {
     setTransitioning(true)
+    setSwipeDir(dir ?? null)
     if (asModal) router.replace(`/image/${slug}`)
     else router.push(`/image/${slug}`)
   }
@@ -203,8 +208,8 @@ export function PhotoDetail({
 
     // Horizontal swipe — navigate between photos
     if (Math.abs(dx) < 50) return
-    if (dx < 0 && next) goto(next.slug)
-    if (dx > 0 && prev) goto(prev.slug)
+    if (dx < 0 && next) goto(next.slug, 'left')
+    if (dx > 0 && prev) goto(prev.slug, 'right')
   }
 
   // Mouse: drag pans while zoomed, double-click toggles zoom, wheel zooms
@@ -244,8 +249,8 @@ export function PhotoDetail({
       const typing = e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")
       if (typing && e.key !== "Escape") return
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
-      if (e.key === "ArrowLeft" && prev) goto(prev.slug)
-      if (e.key === "ArrowRight" && next) goto(next.slug)
+      if (e.key === "ArrowLeft" && prev) goto(prev.slug, 'right')
+      if (e.key === "ArrowRight" && next) goto(next.slug, 'left')
       if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024 && !window.matchMedia("(orientation: landscape)").matches) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
@@ -332,16 +337,23 @@ export function PhotoDetail({
   // manipulate the DOM directly during drags; state change snaps via this effect.
   useEffect(() => {
     const el = infoRef.current
+    const spacer = spacerRef.current
     if (!el) return
     el.style.transition = "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
-    el.style.transform = info ? "translateY(0)" : "translateY(100%)"
+    el.style.transform = info ? "translateY(0)" : `translateY(${el.offsetHeight}px)`
+    if (spacer) {
+      spacer.style.transition = "height 0.45s cubic-bezier(0.16,1,0.3,1)"
+      spacer.style.height = info ? `${el.offsetHeight}px` : "0px"
+    }
   }, [info])
 
-  // Real-time drag on the panel itself (when open → drag down to close).
-  // Uses native listeners so touchmove can be { passive: false } for preventDefault.
+  // Real-time drag on the drag handle only — keeps the scrollable content area
+  // fully native-scrollable. touch events follow the element they started on,
+  // so moving the finger outside the handle still drives the panel transform.
   useEffect(() => {
     const el = infoRef.current
-    if (!el) return
+    const handle = dragHandleRef.current
+    if (!el || !handle) return
     let startY = 0, startT = 0, t0 = 0
     const getT = () => new DOMMatrix(getComputedStyle(el).transform).m42
     const onStart = (e: TouchEvent) => {
@@ -353,7 +365,12 @@ export function PhotoDetail({
     const onMove = (e: TouchEvent) => {
       e.preventDefault()
       const dy = e.touches[0].clientY - startY
-      el.style.transform = `translateY(${Math.max(0, startT + dy)}px)`
+      const newT = Math.max(0, startT + dy)
+      el.style.transform = `translateY(${newT}px)`
+      if (spacerRef.current) {
+        spacerRef.current.style.transition = "none"
+        spacerRef.current.style.height = `${Math.max(0, el.offsetHeight - newT)}px`
+      }
     }
     const onEnd = (e: TouchEvent) => {
       const dy = e.changedTouches[0].clientY - startY
@@ -363,15 +380,19 @@ export function PhotoDetail({
       const close = vel > 0.5 || (vel > -0.3 && cur > h * 0.38)
       el.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
       el.style.transform = close ? `translateY(${h}px)` : "translateY(0)"
+      if (spacerRef.current) {
+        spacerRef.current.style.transition = "height 0.42s cubic-bezier(0.16,1,0.3,1)"
+        spacerRef.current.style.height = close ? "0px" : `${h}px`
+      }
       setInfo(!close)
     }
-    el.addEventListener("touchstart", onStart, { passive: true })
-    el.addEventListener("touchmove", onMove, { passive: false })
-    el.addEventListener("touchend", onEnd, { passive: true })
+    handle.addEventListener("touchstart", onStart, { passive: true })
+    handle.addEventListener("touchmove", onMove, { passive: false })
+    handle.addEventListener("touchend", onEnd, { passive: true })
     return () => {
-      el.removeEventListener("touchstart", onStart)
-      el.removeEventListener("touchmove", onMove)
-      el.removeEventListener("touchend", onEnd)
+      handle.removeEventListener("touchstart", onStart)
+      handle.removeEventListener("touchmove", onMove)
+      handle.removeEventListener("touchend", onEnd)
     }
   }, [])
 
@@ -388,6 +409,10 @@ export function PhotoDetail({
       if (dy < 0) {
         panel.style.transition = "none"
         panel.style.transform = `translateY(${Math.max(0, panel.offsetHeight + dy)}px)`
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = "none"
+          spacerRef.current.style.height = `${Math.min(panel.offsetHeight, -dy)}px`
+        }
       }
     }
     const onEnd = (e: TouchEvent) => {
@@ -396,6 +421,10 @@ export function PhotoDetail({
       const open = dy < -40 || vel < -0.3
       panel.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
       panel.style.transform = open ? "translateY(0)" : `translateY(${panel.offsetHeight}px)`
+      if (spacerRef.current) {
+        spacerRef.current.style.transition = "height 0.42s cubic-bezier(0.16,1,0.3,1)"
+        spacerRef.current.style.height = open ? `${panel.offsetHeight}px` : "0px"
+      }
       setInfo(open)
     }
     bar.addEventListener("touchstart", onStart, { passive: true })
@@ -549,6 +578,23 @@ export function PhotoDetail({
   // the photograph (mobile also swipes; desktop also uses arrow keys).
   const hdrBtn = "inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-2 transition-colors hover:text-amber disabled:pointer-events-none disabled:opacity-25"
 
+  // Pre-compute swipe animation values for the image transform
+  const swipeX = zoom === 1
+    ? (transitioning
+        ? (swipeDir === 'left' ? -28 : swipeDir === 'right' ? 28 : 0)
+        : !largeLoaded
+          ? (swipeDir === 'left' ? 28 : swipeDir === 'right' ? -28 : 0)
+          : 0)
+    : 0
+  const imgTransform = zoom !== 1
+    ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)`
+    : swipeX !== 0 ? `translateX(${swipeX}px)` : undefined
+  const imgTransition = smoothZoom
+    ? "transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease-out"
+    : (transitioning || !largeLoaded)
+      ? "opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.16,1,0.3,1)"
+      : "none"
+
   return (
     <div ref={rootRef} className="flex h-dvh w-full overflow-hidden bg-bg">
       {/* Progress bar */}
@@ -559,19 +605,19 @@ export function PhotoDetail({
       />
 
       {/* Desktop sidebar — always visible on lg+, all metadata lives here */}
-      <aside className="relative z-30 hidden w-[260px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6">
+      <aside className="relative z-30 hidden w-[260px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex max-lg:landscape:w-[180px] lg:w-[340px] lg:flex">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6 max-lg:landscape:px-4 max-lg:landscape:pt-3 max-lg:landscape:pb-4">
           {/* Frame counter */}
-          <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber">
+          <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber max-lg:landscape:mb-3">
             Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
             <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
           </p>
 
           {/* Caption — primary read */}
           {photo.caption && (
-            <div className="mb-6">
+            <div className="mb-6 max-lg:landscape:mb-3">
               <p className="mb-2 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
-              <p className="font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text">
+              <p className="font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text max-lg:landscape:text-[17px]">
                 {photo.caption}
               </p>
             </div>
@@ -579,7 +625,7 @@ export function PhotoDetail({
 
           {/* When */}
           {date && (
-            <Section label="When" className="mb-5">
+            <Section label="When" className="mb-5 max-lg:landscape:mb-3">
               <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-text/90">
                 {date}{time ? <span className="text-muted-2"> · {time}</span> : null}
               </p>
@@ -588,7 +634,7 @@ export function PhotoDetail({
 
           {/* Where */}
           {(locationLine || coords) && (
-            <Section label="Where" className="mb-5">
+            <Section label="Where" className="mb-5 max-lg:landscape:mb-3">
               {locationLine && (
                 <a
                   href={photo.lat != null && photo.lon != null
@@ -605,19 +651,19 @@ export function PhotoDetail({
                 </a>
               )}
               {photo.lat != null && photo.lon != null && (
-                <div className="mt-3 overflow-hidden rounded-lg border border-line-2">
+                <div className="mt-3 overflow-hidden rounded-lg border border-line-2 max-lg:landscape:hidden">
                   <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" label={isInChechnya(photo.lat, photo.lon) ? "Chechnya" : undefined} />
                 </div>
               )}
               {coords && (
-                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60">{coords}</p>
+                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60 max-lg:landscape:hidden">{coords}</p>
               )}
             </Section>
           )}
 
           {/* Camera */}
           {!isVideo && (photo.camera || photo.lens || cameraSpecs.length > 0) && (
-            <Section label="Camera" className="mb-5">
+            <Section label="Camera" className="mb-5 max-lg:landscape:hidden">
               {photo.camera && (
                 <p className="font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-text/90">{photo.camera}</p>
               )}
@@ -634,7 +680,7 @@ export function PhotoDetail({
 
           {/* File */}
           {fileSpecs.length > 0 && (
-            <Section label="File" className="mb-5">
+            <Section label="File" className="mb-5 max-lg:landscape:hidden">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
               </div>
@@ -689,7 +735,7 @@ export function PhotoDetail({
 
       {/* Portrait: floating gradient + controls overlay — zero in-flow height, photo gets full stage */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent landscape:hidden lg:hidden" />
-      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden backdrop-blur-sm bg-bg/60">
+      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden backdrop-blur-md bg-bg/85">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -706,16 +752,16 @@ export function PhotoDetail({
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
         </span>
         {!info && (
-          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
+          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block landscape:hidden">
             <span className="text-muted-2">← →</span> previous / next
           </p>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
           <div className="hidden items-center landscape:flex lg:flex">
-            <button onClick={() => prev && goto(prev.slug)} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
+            <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
               <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
             </button>
-            <button onClick={() => next && goto(next.slug)} disabled={!next} aria-label="Next frame" className={hdrBtn}>
+            <button onClick={() => next && goto(next.slug, 'left')} disabled={!next} aria-label="Next frame" className={hdrBtn}>
               <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
             </button>
           </div>
@@ -735,7 +781,7 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-y-0 inset-x-2 sm:inset-x-14">
+        <div className="pointer-events-none absolute inset-y-0 inset-x-2 sm:inset-x-14 max-lg:landscape:inset-x-2">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {placeholder && !isVideo && (
@@ -762,8 +808,8 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain transition-opacity duration-200 ${transitioning ? "opacity-30" : "opacity-100"}`}
-              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
+              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain ${transitioning ? "opacity-0" : "opacity-100"}`}
+              style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -771,9 +817,9 @@ export function PhotoDetail({
               src={photo.url.large}
               alt={photo.caption ?? `Frame ${index + 1}`}
               draggable={false}
-              onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
-              style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
+              onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null) }}
+              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+              style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           )}
         </div>
@@ -833,7 +879,7 @@ export function PhotoDetail({
         className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
       >
         <button
-          onClick={() => prev && goto(prev.slug)}
+          onClick={() => prev && goto(prev.slug, 'right')}
           disabled={!prev}
           aria-label="Previous frame"
           className={`${hdrBtn} ml-1 shrink-0`}
@@ -862,7 +908,7 @@ export function PhotoDetail({
         </button>
 
         <button
-          onClick={() => next && goto(next.slug)}
+          onClick={() => next && goto(next.slug, 'left')}
           disabled={!next}
           aria-label="Next frame"
           className={`${hdrBtn} mr-1 shrink-0`}
@@ -870,6 +916,10 @@ export function PhotoDetail({
           <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Spacer that grows in sync with the info panel so the stage shrinks
+          and the photo remains fully visible when details are open */}
+      <div ref={spacerRef} className="shrink-0 landscape:hidden lg:hidden" style={{ height: 0 }} />
 
       {/* Info sheet — absolute bottom sheet, slides up over the action bar.
           GPU-composited translateY animation; real-time drag via native listeners above. */}
@@ -879,8 +929,8 @@ export function PhotoDetail({
         className={`absolute inset-x-0 bottom-0 z-50 landscape:hidden lg:hidden ${info ? "" : "pointer-events-none"}`}
         style={{ transform: "translateY(100%)" }}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center rounded-t-2xl border-t border-line-2 bg-bg-2 pb-1 pt-3">
+        {/* Drag handle — touch listeners live here, not on the panel, so scrollable content stays native */}
+        <div ref={dragHandleRef} className="flex justify-center rounded-t-2xl border-t border-line-2 bg-bg-2 pb-1 pt-3 touch-none">
           <div className="h-1 w-10 rounded-full bg-line-2" />
         </div>
 

@@ -19,6 +19,7 @@ export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoD
     focal: row.focal_length, fNumber: row.f_number, exposure: row.exposure_time, iso: row.iso,
     bytes: row.bytes, format: row.format,
     published: row.published === 1,
+    visibility: (row.published === 0 ? 0 : row.published === 2 ? 2 : 1) as 0 | 1 | 2,
     tags,
     mediaType: row.media_type === 'video' ? 'video' : 'photo',
     duration: row.duration,

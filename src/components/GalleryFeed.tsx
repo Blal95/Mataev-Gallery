@@ -74,7 +74,7 @@ export function GalleryFeed({
       (entries) => {
         if (entries[0]?.isIntersecting) doFetch()
       },
-      { rootMargin: "400px" },
+      { rootMargin: "800px" },
     )
 
     observer.observe(sentinel)

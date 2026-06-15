@@ -29,25 +29,24 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
   const gap = w < 640 ? 8 : 14
   const isMobile = w > 0 && w < 640
 
-  // ── Mobile: 2-col grid; every 7th photo spans the full row ──
+  // ── Mobile: two independent flex columns so tall photos don't create gaps ──
   if (isMobile) {
-    const colW = (w - gap) / 2
+    const colW = Math.round((w - gap) / 2)
+    const left = photos.filter((_, i) => i % 2 === 0)
+    const right = photos.filter((_, i) => i % 2 !== 0)
     return (
       <div ref={ref} className="px-4">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap }}>
-          {photos.map((photo, i) => {
-            const featured = isFeatured(i)
-            return (
-              <div key={photo.id} style={featured ? { gridColumn: "1 / -1" } : undefined}>
-                <PhotoTile
-                  photo={photo}
-                  width={Math.round(featured ? w : colW)}
-                  index={i}
-                  priority={i < 4}
-                />
-              </div>
-            )
-          })}
+        <div className="flex items-start" style={{ gap }}>
+          <div className="flex flex-1 flex-col" style={{ gap }}>
+            {left.map((photo, li) => (
+              <PhotoTile key={photo.id} photo={photo} width={colW} index={li * 2} priority={li * 2 < 6} />
+            ))}
+          </div>
+          <div className="flex flex-1 flex-col" style={{ gap }}>
+            {right.map((photo, ri) => (
+              <PhotoTile key={photo.id} photo={photo} width={colW} index={ri * 2 + 1} priority={ri * 2 + 1 < 6} />
+            ))}
+          </div>
         </div>
       </div>
     )
@@ -77,7 +76,7 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
                   photo={entry.p}
                   width={b.width}
                   index={entry.i}
-                  priority={entry.i < columns}
+                  priority={entry.i < columns * 2}
                 />
               )
             })}

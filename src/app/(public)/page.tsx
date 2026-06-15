@@ -6,7 +6,7 @@ import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const revalidate = 300
+export const revalidate = 3600
 
 export default async function Home() {
   const [database, base] = await Promise.all([db(), cdnBase()])
@@ -17,10 +17,13 @@ export default async function Home() {
 
   return (
     <>
-      {cdnOrigin && <link rel="preconnect" href={cdnOrigin} />}
+      {cdnOrigin && <link rel="preconnect" href={cdnOrigin} crossOrigin="anonymous" />}
       {cdnOrigin && <link rel="dns-prefetch" href={cdnOrigin} />}
-      {photos.slice(0, 8).map((p) => (
+      {photos.slice(0, 6).map((p) => (
         <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="high" />
+      ))}
+      {photos.slice(6, 24).map((p) => (
+        <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="low" />
       ))}
       <main>
         <TagIndex tags={tags} />

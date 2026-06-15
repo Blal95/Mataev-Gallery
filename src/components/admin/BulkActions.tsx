@@ -3,7 +3,7 @@
 import { useState } from "react"
 import type { PhotoDTO } from "@/types/photo"
 
-type Mode = "tag" | "location" | "draft" | "delete"
+type Mode = "tag" | "location" | "visibility" | "delete"
 
 // fetch resolves on 4xx/5xx — without this, failed bulk ops flash "Done ✓"
 function assertOk(res: Response) {
@@ -13,7 +13,7 @@ function assertOk(res: Response) {
 const MODES: { key: Mode; label: string }[] = [
   { key: "tag", label: "Tag" },
   { key: "location", label: "Location" },
-  { key: "draft", label: "Draft" },
+  { key: "visibility", label: "Visibility" },
   { key: "delete", label: "Delete" },
 ]
 
@@ -76,7 +76,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
     setBusy(false)
   }
 
-  async function applyDraft(published: number) {
+  async function applyVisibility(published: number) {
     if (selected.size === 0) return
     setBusy(true)
     try {
@@ -148,13 +148,16 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
           </button>
         )}
 
-        {mode === "draft" && (
-          <div className="flex gap-2">
-            <button onClick={() => applyDraft(0)} disabled={busy || count === 0} className={btnAmber}>
+        {mode === "visibility" && (
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => applyVisibility(0)} disabled={busy || count === 0} className={btnAmber}>
               {busy ? "…" : `Draft ${count}`}
             </button>
-            <button onClick={() => applyDraft(1)} disabled={busy || count === 0} className={btnCyan}>
-              {status === "done" ? "Done ✓" : busy ? "…" : `Publish ${count}`}
+            <button onClick={() => applyVisibility(1)} disabled={busy || count === 0} className={btnCyan}>
+              {status === "done" ? "Done ✓" : busy ? "…" : `Public ${count}`}
+            </button>
+            <button onClick={() => applyVisibility(2)} disabled={busy || count === 0} className={`${btnBase} border-line-2 text-text`}>
+              {busy ? "…" : `Tag only ${count}`}
             </button>
           </div>
         )}
@@ -188,7 +191,7 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
       </div>
 
       {/* Photo grid */}
-      <div className="grid grid-cols-4 gap-1.5 max-h-56 overflow-y-auto">
+      <div className="grid grid-cols-3 gap-1.5 max-h-[28rem] overflow-y-auto sm:grid-cols-4">
         {photos.map(p => (
           <button
             key={p.id}
@@ -197,9 +200,14 @@ export function BulkActions({ photos, onDone }: { photos: PhotoDTO[]; onDone: ()
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={p.url.thumb} alt="" className="h-full w-full object-cover" />
-            {!p.published && (
+            {p.visibility === 0 && (
               <div className="absolute inset-x-0 bottom-0 bg-amber/80 py-0.5 text-center font-mono text-[7px] uppercase tracking-wider text-bg">
                 Draft
+              </div>
+            )}
+            {p.visibility === 2 && (
+              <div className="absolute inset-x-0 bottom-0 bg-bg/80 py-0.5 text-center font-mono text-[7px] uppercase tracking-wider text-text">
+                Tag only
               </div>
             )}
             {selected.has(p.id) && (

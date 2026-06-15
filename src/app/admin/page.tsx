@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Login } from "@/components/admin/Login"
 import { Uploader } from "@/components/admin/Uploader"
 import { PhotoList } from "@/components/admin/PhotoList"
+import { TagManager } from "@/components/admin/TagManager"
 
 interface StatusResponse { authed: boolean; enrolled: boolean }
 
@@ -69,6 +70,7 @@ export default function AdminPage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">{backfill}</p>
       )}
       <Uploader onUploaded={() => setReload((n) => n + 1)} />
+      <TagManager />
       <PhotoList reloadKey={reload} />
     </main>
   )
