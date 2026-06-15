@@ -650,16 +650,16 @@ export function PhotoDetail({
         onDoubleClick={onDoubleClick}
       >
         <div className="pointer-events-none relative flex h-full items-center justify-center px-2 sm:px-14">
-          {/* Thumbhash blur placeholder */}
+          {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
+              footprint so the blur never bleeds into the letterbox areas */}
           {placeholder && !isVideo && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={placeholder}
-              alt=""
-              aria-hidden
+            <div
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-full max-w-full overflow-hidden transition-opacity duration-500 ${largeLoaded ? "opacity-0" : "opacity-80"}`}
               style={{ aspectRatio: photo.aspect > 0 ? photo.aspect : 1 }}
-              className={`pointer-events-none absolute inset-0 h-full w-full object-cover blur-[18px] transition-opacity duration-500 ${largeLoaded ? "opacity-0" : "opacity-80"}`}
-            />
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={placeholder} alt="" aria-hidden className="h-full w-full scale-105 object-cover blur-[8px]" />
+            </div>
           )}
           {isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
