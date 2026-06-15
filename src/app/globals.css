@@ -94,6 +94,18 @@ button:focus-visible {
   transform: translateZ(0);
 }
 
+/* Tiles fade in instead of popping — Leaflet sets .leaflet-tile-loaded when
+   the image fires onload; we animate opacity from 0. */
+.leaflet-tile { opacity: 0; transition: opacity 0.25s ease; }
+.leaflet-tile-loaded { opacity: 1; }
+
+/* Attribution — tiny, flush right, matches palette. */
+.leaflet-control-attribution {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 6px 4px 0 !important;
+}
+
 
 /* Leaflet zoom controls — match the dark theme instead of stock white */
 .leaflet-bar {

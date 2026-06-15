@@ -287,14 +287,56 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
       // If a specific center was requested (e.g. from a photo location link), use it.
       // Otherwise frame around all pins; fall back to a Norway↔Caucasus view.
       const center = initialCenterRef.current
+      let homeBounds: import("leaflet").LatLngBounds | null = null
+      if (markers.length > 0) {
+        homeBounds = L.featureGroup(markers).getBounds().pad(0.25)
+      }
       if (center) {
-        map.setView(center, initialZoomRef.current ?? 10)
-      } else if (markers.length > 0) {
-        const group = L.featureGroup(markers)
-        map.fitBounds(group.getBounds().pad(0.25), { maxZoom: 8 })
+        map.setView([0, 0], 2, { animate: false })
+        map.flyTo(center, initialZoomRef.current ?? 10, { duration: 1.4 })
+      } else if (homeBounds) {
+        map.fitBounds(homeBounds, { maxZoom: 8 })
       } else {
         map.setView([55, 30], 3)
       }
+
+      // Home button — flies back to fit-all-pins view.
+      if (homeBounds) {
+        const bounds = homeBounds
+        const HomeControl = L.Control.extend({
+          onAdd() {
+            const bar = L.DomUtil.create("div", "leaflet-bar leaflet-control")
+            const a = L.DomUtil.create("a", "", bar) as HTMLAnchorElement
+            a.href = "#"
+            a.title = "Fit all frames"
+            a.setAttribute("role", "button")
+            a.style.cssText = "display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:15px;line-height:1;"
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+            svg.setAttribute("viewBox", "0 0 16 16")
+            svg.setAttribute("fill", "none")
+            svg.setAttribute("stroke", "currentColor")
+            svg.setAttribute("stroke-width", "1.5")
+            svg.style.cssText = "width:14px;height:14px;display:block"
+            const p1 = document.createElementNS("http://www.w3.org/2000/svg", "path")
+            p1.setAttribute("d", "M1 6L8 1l7 5v8a1 1 0 01-1 1H2a1 1 0 01-1-1V6z")
+            const p2 = document.createElementNS("http://www.w3.org/2000/svg", "path")
+            p2.setAttribute("d", "M6 16V10h4v6")
+            svg.appendChild(p1); svg.appendChild(p2); a.appendChild(svg)
+            L.DomEvent.on(a, "click", (e) => {
+              L.DomEvent.stopPropagation(e)
+              L.DomEvent.preventDefault(e)
+              map!.flyToBounds(bounds, { maxZoom: 8, duration: 1.2 })
+            })
+            return bar
+          },
+        })
+        new HomeControl({ position: "topleft" }).addTo(map)
+      }
+
+      // Minimal attribution — CARTO ToS requires credit; styled to match the palette.
+      L.control.attribution({ position: "bottomright", prefix: false })
+        .addAttribution('<span style="font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.06em;opacity:.35">© <a href="https://carto.com" target="_blank" rel="noopener" style="color:inherit">CARTO</a> · <a href="https://openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit">OSM</a></span>')
+        .addTo(map)
 
       // Auto-open popup for a selected photo (e.g. navigated from photo detail).
       const slug = selectedSlugRef.current
