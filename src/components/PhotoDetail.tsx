@@ -688,7 +688,7 @@ export function PhotoDetail({
               height={photo.height}
               draggable={false}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
+              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
               style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
             />
           )}
