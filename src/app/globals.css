@@ -83,7 +83,7 @@ button:focus-visible {
    water/terrain boundary. Amber stays reserved for markers.
    will-change promotes each tile to its own compositor layer. */
 .leaflet-container .leaflet-tile {
-  filter: brightness(0.78) contrast(1.2) saturate(0.5) sepia(0.25);
+  filter: brightness(0.95) contrast(1.05) saturate(0.65) sepia(0.18);
   will-change: transform;
 }
 

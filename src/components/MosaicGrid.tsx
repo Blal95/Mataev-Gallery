@@ -5,6 +5,12 @@ import { computeColumns, columnsForWidth } from "@/lib/masonry"
 import { PhotoTile } from "./PhotoTile"
 import type { PhotoDTO } from "@/types/photo"
 
+// On mobile every 7th photo (6 normal + 1 full-width) spans the full row,
+// creating VSCO-style size variety without any manual cropping.
+function isFeatured(index: number) {
+  return index % 7 === 6
+}
+
 export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(0)
@@ -16,8 +22,35 @@ export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
     return () => ro.disconnect()
   }, [])
 
-  const columns = columnsForWidth(w)
   const gap = w < 640 ? 8 : 14
+  const isMobile = w > 0 && w < 640
+
+  // ── Mobile: 2-col CSS grid with occasional full-width featured photos ──
+  if (isMobile) {
+    const colW = (w - gap) / 2
+    return (
+      <div ref={ref} className="px-4">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap }}>
+          {photos.map((photo, i) => {
+            const featured = isFeatured(i)
+            return (
+              <div key={photo.id} style={featured ? { gridColumn: "1 / -1" } : undefined}>
+                <PhotoTile
+                  photo={photo}
+                  width={Math.round(featured ? w : colW)}
+                  index={i}
+                  priority={i < 2}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop: original balanced masonry ──
+  const columns = columnsForWidth(w)
   const cols =
     w > 0
       ? computeColumns(
