@@ -33,7 +33,7 @@ export function computeColumns(items: MasonryItem[], opts: MasonryOpts): Masonry
 
 /** Responsive column count tuned for a photo gallery. */
 export function columnsForWidth(w: number): number {
-  if (w < 640) return 1   // single column on mobile — full-width photos, no bleed
+  if (w < 640) return 2
   if (w < 1024) return 3
   if (w < 1440) return 4
   return 5
