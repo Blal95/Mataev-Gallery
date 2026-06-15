@@ -73,6 +73,8 @@ export function PhotoDetail({
   const lastTapTime = useRef(0)
   const stageRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  const infoRef = useRef<HTMLDivElement>(null)
+  const bottomBarRef = useRef<HTMLDivElement>(null)
 
   // Discrete zoom changes (double-tap, keys, reset) animate; continuous
   // gestures (pinch, wheel, drag) must track the pointer with no easing.
@@ -259,13 +261,17 @@ export function PhotoDetail({
   // Lock body scroll and disable pull-to-refresh while photo detail is open
   useEffect(() => {
     const { style } = document.body
+    const htmlStyle = document.documentElement.style
     const prevOverflow = style.overflow
     const prevOverscroll = style.overscrollBehavior
+    const prevHtmlOverscroll = htmlStyle.overscrollBehavior
     style.overflow = "hidden"
     style.overscrollBehavior = "none"
+    htmlStyle.overscrollBehavior = "none"   // Chrome Android needs html, not just body
     return () => {
       style.overflow = prevOverflow
       style.overscrollBehavior = prevOverscroll
+      htmlStyle.overscrollBehavior = prevHtmlOverscroll
     }
   }, [])
 
@@ -321,6 +327,86 @@ export function PhotoDetail({
   useEffect(() => {
     sessionStorage.setItem("detail-info", info ? "1" : "0")
   }, [info])
+
+  // Drive the info panel position from React state — all gesture handlers
+  // manipulate the DOM directly during drags; state change snaps via this effect.
+  useEffect(() => {
+    const el = infoRef.current
+    if (!el) return
+    el.style.transition = "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
+    el.style.transform = info ? "translateY(0)" : "translateY(100%)"
+  }, [info])
+
+  // Real-time drag on the panel itself (when open → drag down to close).
+  // Uses native listeners so touchmove can be { passive: false } for preventDefault.
+  useEffect(() => {
+    const el = infoRef.current
+    if (!el) return
+    let startY = 0, startT = 0, t0 = 0
+    const getT = () => new DOMMatrix(getComputedStyle(el).transform).m42
+    const onStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY
+      startT = getT()
+      t0 = Date.now()
+      el.style.transition = "none"
+    }
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const dy = e.touches[0].clientY - startY
+      el.style.transform = `translateY(${Math.max(0, startT + dy)}px)`
+    }
+    const onEnd = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - startY
+      const vel = dy / Math.max(1, Date.now() - t0)
+      const h = el.offsetHeight
+      const cur = Math.max(0, startT + dy)
+      const close = vel > 0.5 || (vel > -0.3 && cur > h * 0.38)
+      el.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
+      el.style.transform = close ? `translateY(${h}px)` : "translateY(0)"
+      setInfo(!close)
+    }
+    el.addEventListener("touchstart", onStart, { passive: true })
+    el.addEventListener("touchmove", onMove, { passive: false })
+    el.addEventListener("touchend", onEnd, { passive: true })
+    return () => {
+      el.removeEventListener("touchstart", onStart)
+      el.removeEventListener("touchmove", onMove)
+      el.removeEventListener("touchend", onEnd)
+    }
+  }, [])
+
+  // Swipe-up from bottom bar opens panel with real-time peek.
+  useEffect(() => {
+    const bar = bottomBarRef.current
+    const panel = infoRef.current
+    if (!bar || !panel) return
+    let startY = 0, t0 = 0
+    const onStart = (e: TouchEvent) => { startY = e.touches[0].clientY; t0 = Date.now() }
+    const onMove = (e: TouchEvent) => {
+      e.preventDefault()
+      const dy = e.touches[0].clientY - startY
+      if (dy < 0) {
+        panel.style.transition = "none"
+        panel.style.transform = `translateY(${Math.max(0, panel.offsetHeight + dy)}px)`
+      }
+    }
+    const onEnd = (e: TouchEvent) => {
+      const dy = e.changedTouches[0].clientY - startY
+      const vel = dy / Math.max(1, Date.now() - t0)
+      const open = dy < -40 || vel < -0.3
+      panel.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
+      panel.style.transform = open ? "translateY(0)" : `translateY(${panel.offsetHeight}px)`
+      setInfo(open)
+    }
+    bar.addEventListener("touchstart", onStart, { passive: true })
+    bar.addEventListener("touchmove", onMove, { passive: false })
+    bar.addEventListener("touchend", onEnd, { passive: true })
+    return () => {
+      bar.removeEventListener("touchstart", onStart)
+      bar.removeEventListener("touchmove", onMove)
+      bar.removeEventListener("touchend", onEnd)
+    }
+  }, [])
 
   // Count a view once per photo per browser session — covers both the full
   // page and the intercepted modal route.
@@ -684,8 +770,6 @@ export function PhotoDetail({
             <img
               src={photo.url.large}
               alt={photo.caption ?? `Frame ${index + 1}`}
-              width={photo.width}
-              height={photo.height}
               draggable={false}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
               className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
@@ -745,19 +829,8 @@ export function PhotoDetail({
           Houses prev/next nav and an info trigger (caption preview + pill).
           Replaces the old caption strip + header INFO button. */}
       <div
+        ref={bottomBarRef}
         className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
-        onTouchStart={(e) => {
-          if (e.touches.length === 1) {
-            touchStartY.current = e.touches[0].clientY
-          }
-        }}
-        onTouchEnd={(e) => {
-          if (touchStartY.current == null) return
-          const dy = e.changedTouches[0].clientY - touchStartY.current
-          touchStartY.current = null
-          if (dy < -40 && !info) { setInfo(true) }
-          if (dy > 40 && info) { setInfo(false) }
-        }}
       >
         <button
           onClick={() => prev && goto(prev.slug)}
@@ -798,20 +871,25 @@ export function PhotoDetail({
         </button>
       </div>
 
-      {/* Info sheet — in flow below the stage (mobile/tablet) so opening it
-          shrinks the stage and the whole frame stays visible; desktop uses sidebar */}
+      {/* Info sheet — absolute bottom sheet, slides up over the action bar.
+          GPU-composited translateY animation; real-time drag via native listeners above. */}
       <div
+        ref={infoRef}
         aria-hidden={!info}
-        className={`relative z-40 grid shrink-0 transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] landscape:hidden lg:hidden ${info ? "grid-rows-[1fr]" : "pointer-events-none grid-rows-[0fr]"}`}
+        className={`absolute inset-x-0 bottom-0 z-50 landscape:hidden lg:hidden ${info ? "" : "pointer-events-none"}`}
+        style={{ transform: "translateY(100%)" }}
       >
-        <div className="overflow-hidden">
-          <div className="border-t border-line-2 bg-bg-2">
+        {/* Drag handle */}
+        <div className="flex justify-center rounded-t-2xl border-t border-line-2 bg-bg-2 pb-1 pt-3">
+          <div className="h-1 w-10 rounded-full bg-line-2" />
+        </div>
 
-            {/* Main metadata — scrollable, capped height */}
-            <div
-              className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-3 sm:px-6"
-              style={{ maxHeight: "min(42vh, 340px)" }}
-            >
+        <div className="bg-bg-2 pb-[env(safe-area-inset-bottom)]">
+          {/* Main metadata — scrollable, capped height */}
+          <div
+            className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 sm:px-6"
+            style={{ maxHeight: "min(55vh, 400px)" }}
+          >
               {/* Caption + location + date — repeated here so it never hides under the sheet */}
               {photo.caption && (
                 <>
@@ -909,7 +987,7 @@ export function PhotoDetail({
               </div>
             </div>
 
-            {/* Comments — outside scrollable div so expansion grows the panel upward */}
+            {/* Comments */}
             <div className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${showComments ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
               <div className="overflow-hidden">
                 <div
@@ -923,8 +1001,6 @@ export function PhotoDetail({
 
           </div>
         </div>
-      </div>
-
       </div>{/* /right column */}
 
       <ShortcutsOverlay />
