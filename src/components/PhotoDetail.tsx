@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LocationMap } from "./LocationMap"
 import { PhotoComments } from "./PhotoComments"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
-import { flagEmoji, flagUrl, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
+import { flagEmoji, flagUrl, displayCountry, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -457,7 +457,7 @@ export function PhotoDetail({
 
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
-  const locationLine = [photo.place, photo.country].filter(Boolean).join(", ")
+  const locationLine = [photo.place, displayCountry(photo.country, photo.countryCode, photo.lat, photo.lon)].filter(Boolean).join(", ")
 
   // Header nav buttons — prev/next live in the top bar so nothing ever overlays
   // the photograph (mobile also swipes; desktop also uses arrow keys).
@@ -603,7 +603,7 @@ export function PhotoDetail({
 
       {/* Portrait: floating gradient + controls overlay — zero in-flow height, photo gets full stage */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent landscape:hidden lg:hidden" />
-      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden">
+      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden backdrop-blur-sm bg-bg/60">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -649,7 +649,7 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none relative flex h-full items-center justify-center px-2 sm:px-14">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2 sm:px-14">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {placeholder && !isVideo && (

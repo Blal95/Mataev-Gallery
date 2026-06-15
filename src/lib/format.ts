@@ -33,6 +33,11 @@ export function flagUrl(code: string | null, lat?: number | null, lon?: number |
   return `https://flagcdn.com/32x24/${code.toLowerCase()}.png`
 }
 
+export function displayCountry(country: string | null, code: string | null, lat?: number | null, lon?: number | null): string | null {
+  if (code === "RU" && isInChechnya(lat, lon)) return "Chechnya"
+  return country
+}
+
 export function flagEmoji(code: string | null, lat?: number | null, lon?: number | null): string | null {
   if (code === "RU" && isInChechnya(lat, lon)) return null
   if (!code || code.length !== 2) return null
