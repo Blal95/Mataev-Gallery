@@ -17,6 +17,10 @@ export function PhotoTile({
   const [loaded, setLoaded] = useState(false)
   const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
   const colW = Math.round(width)
+  // Offscreen tiles skip layout + paint entirely (content-visibility:auto).
+  // The intrinsic size keeps the scrollbar stable; priority tiles (first
+  // screenful / LCP) opt out so they paint without containment.
+  const intrinsicH = Math.round(colW / (photo.aspect > 0 ? photo.aspect : 1))
   const frame = String(index + 1).padStart(3, "0")
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
@@ -38,6 +42,7 @@ export function PhotoTile({
       style={{
         aspectRatio: photo.aspect > 0 ? photo.aspect : 1,
         animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${delay} both`,
+        ...(priority ? {} : { contentVisibility: "auto", containIntrinsicSize: `${colW}px ${intrinsicH}px` }),
       }}
     >
       {placeholder && !loaded && (

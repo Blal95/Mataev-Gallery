@@ -187,6 +187,7 @@ export function PhotoDetail({
         else zoomAt(endX, endY, 2.5, true)
       } else {
         lastTapTime.current = now
+        if (info) setInfo(false)
       }
       return
     }
@@ -719,7 +720,7 @@ export function PhotoDetail({
               onClick={() => setShowComments((v) => !v)}
               className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
             >
-              {showComments ? "Hide comments" : "Comments →"}
+              {showComments ? "Hide comments" : photo.commentCount > 0 ? `Comments · ${photo.commentCount}` : "Comments →"}
             </button>
           </div>
           {showComments && (
@@ -817,6 +818,8 @@ export function PhotoDetail({
               src={photo.url.large}
               alt={photo.caption ?? `Frame ${index + 1}`}
               draggable={false}
+              decoding="async"
+              fetchPriority="high"
               onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null) }}
               className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
@@ -904,7 +907,7 @@ export function PhotoDetail({
                 : date}
             </p>
           )}
-          <span aria-hidden className={`h-[3px] w-8 rounded-full transition-colors duration-200 ${info ? "bg-amber/50" : "bg-line-2"}`} />
+          {!info && <span aria-hidden className="h-[3px] w-8 rounded-full bg-line-2" />}
         </button>
 
         <button
@@ -1032,7 +1035,7 @@ export function PhotoDetail({
                   onClick={() => setShowComments((v) => !v)}
                   className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-amber"
                 >
-                  {showComments ? "Hide comments" : "Comments →"}
+                  {showComments ? "Hide comments" : photo.commentCount > 0 ? `Comments · ${photo.commentCount}` : "Comments →"}
                 </button>
               </div>
             </div>

@@ -12,10 +12,13 @@ export const getDetail = cache(async (db: SqlDb, idOrSlug: string): Promise<{
   const all = (await listPhotos(db, { homeOnly: false })).map(({ row, tags }) => rowToDTO(row, tags, base))
   const index = all.findIndex((p) => p.id === idOrSlug || p.slug === idOrSlug)
   if (index < 0) return null
+  const countRow = await db.prepare("SELECT COUNT(*) AS n FROM comments WHERE photo_id = ?")
+    .bind(all[index].id).first<{ n: number }>()
+  const photo = { ...all[index], commentCount: countRow?.n ?? 0 }
   // Only prev/next ship to the client — sending the whole gallery as props
   // made every detail page payload grow with the photo count.
   return {
-    photo: all[index],
+    photo,
     prev: all[index - 1] ?? null,
     next: all[index + 1] ?? null,
     index,

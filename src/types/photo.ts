@@ -32,6 +32,7 @@ export interface PhotoDTO {
   mediaType: 'photo' | 'video'
   duration: number | null
   views: number
+  commentCount: number
 }
 
 export interface TagCount { name: string; count: number }

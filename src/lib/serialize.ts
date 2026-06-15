@@ -1,7 +1,7 @@
 import type { PhotoRow, PhotoDTO } from "@/types/photo"
 import { formatCamera } from "./format"
 
-export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoDTO {
+export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string, commentCount = 0): PhotoDTO {
   return {
     id: row.id,
     slug: row.slug,
@@ -24,5 +24,6 @@ export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string): PhotoD
     mediaType: row.media_type === 'video' ? 'video' : 'photo',
     duration: row.duration,
     views: row.views ?? 0,
+    commentCount,
   }
 }
