@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { LocationMap } from "./LocationMap"
 import { PhotoComments } from "./PhotoComments"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
-import { flagEmoji, flagUrl, displayCountry, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
+import { flagEmoji, flagUrl, displayCountry, isInChechnya, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
 
@@ -520,7 +520,7 @@ export function PhotoDetail({
               )}
               {photo.lat != null && photo.lon != null && (
                 <div className="mt-3 overflow-hidden rounded-lg border border-line-2">
-                  <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" />
+                  <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" label={isInChechnya(photo.lat, photo.lon) ? "Chechnya" : undefined} />
                 </div>
               )}
               {coords && (

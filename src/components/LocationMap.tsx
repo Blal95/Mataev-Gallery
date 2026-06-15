@@ -19,12 +19,14 @@ export function LocationMap({
   zoom = 9,
   className,
   interactive = true,
+  label,
 }: {
   lat: number
   lon: number
   zoom?: number
   className?: string
   interactive?: boolean
+  label?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -74,6 +76,24 @@ export function LocationMap({
             '</div>',
         }),
       }).addTo(map)
+
+      if (label === "Chechnya") {
+        void fetch("/chechnya-border.json")
+          .then((r) => (r.ok ? (r.json() as Promise<GeoJSON.Feature>) : null))
+          .then((geo) => {
+            if (!geo || cancelled || !map) return
+            L.geoJSON(geo, {
+              style: {
+                color: "#3d3528",
+                weight: 1.2,
+                opacity: 1,
+                fillOpacity: 0,
+              },
+              interactive: false,
+            }).addTo(map)
+          })
+          .catch(() => {})
+      }
     })()
 
     return () => {

@@ -22,7 +22,7 @@ export function formatFocal(mm: number | null): string | null {
 }
 
 // Chechnya (Ichkeria) bounding box — show Ichkeria flag instead of Russian flag
-function isInChechnya(lat: number | null | undefined, lon: number | null | undefined): boolean {
+export function isInChechnya(lat: number | null | undefined, lon: number | null | undefined): boolean {
   if (lat == null || lon == null) return false
   return lat >= 42.5 && lat <= 43.8 && lon >= 44.8 && lon <= 47.0
 }
