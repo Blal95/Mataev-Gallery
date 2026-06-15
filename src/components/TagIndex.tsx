@@ -53,7 +53,7 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
 
   return (
     <nav aria-label="Filter by tag" className="sticky top-0 z-20 flex items-stretch border-b border-line bg-bg">
-      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-4 pt-3 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-4 pt-2 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Chip
           href="/"
           active={!active}
