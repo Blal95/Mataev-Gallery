@@ -643,7 +643,7 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
