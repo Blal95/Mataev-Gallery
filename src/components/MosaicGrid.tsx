@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { computeColumns, columnsForWidth } from "@/lib/masonry"
 import { PhotoTile } from "./PhotoTile"
 import type { PhotoDTO } from "@/types/photo"
@@ -14,6 +14,10 @@ function isFeatured(index: number) {
 export function MosaicGrid({ photos }: { photos: PhotoDTO[] }) {
   const ref = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(0)
+
+  useLayoutEffect(() => {
+    if (ref.current) setW(ref.current.getBoundingClientRect().width)
+  }, [])
 
   useEffect(() => {
     if (!ref.current) return

@@ -9,17 +9,29 @@ import { PAGE_SIZE } from "@/config/site"
 export const revalidate = 300
 
 export default async function Home() {
-  const { photos, tags, nextOffset } = await buildPhotosResponse(await db(), { limit: PAGE_SIZE, offset: 0 }, await cdnBase())
+  const [database, base] = await Promise.all([db(), cdnBase()])
+  const { photos, tags, nextOffset } = await buildPhotosResponse(database, { limit: PAGE_SIZE, offset: 0 }, base)
+
+  let cdnOrigin: string | null = null
+  try { cdnOrigin = new URL(base).origin } catch { /* ignore */ }
+
   return (
-    <main>
-      <TagIndex tags={tags} />
-      <div className="pt-3.5">
-        {photos.length === 0 ? (
-          <EmptyState label="No photos yet" />
-        ) : (
-          <GalleryFeed initialPhotos={photos} initialNextOffset={nextOffset ?? null} />
-        )}
-      </div>
-    </main>
+    <>
+      {cdnOrigin && <link rel="preconnect" href={cdnOrigin} />}
+      {cdnOrigin && <link rel="dns-prefetch" href={cdnOrigin} />}
+      {photos.slice(0, 8).map((p) => (
+        <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="high" />
+      ))}
+      <main>
+        <TagIndex tags={tags} />
+        <div className="pt-3.5">
+          {photos.length === 0 ? (
+            <EmptyState label="No photos yet" />
+          ) : (
+            <GalleryFeed initialPhotos={photos} initialNextOffset={nextOffset ?? null} />
+          )}
+        </div>
+      </main>
+    </>
   )
 }
