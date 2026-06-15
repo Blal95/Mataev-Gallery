@@ -649,7 +649,7 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-2 sm:px-14">
+        <div className="pointer-events-none absolute inset-y-0 inset-x-2 sm:inset-x-14">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {placeholder && !isVideo && (
@@ -688,7 +688,7 @@ export function PhotoDetail({
               height={photo.height}
               draggable={false}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true) }}
-              className={`pointer-events-auto relative h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
+              className={`pointer-events-auto h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] transition-opacity duration-300 ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning ? "opacity-30" : "opacity-100"}`}
               style={{ transform: zoom !== 1 ? `scale(${zoom}) translate(${panX/zoom}px, ${panY/zoom}px)` : undefined, transition: smoothZoom ? "transform 0.3s cubic-bezier(0.16,1,0.3,1)" : "none", transformOrigin: "center center" }}
             />
           )}
@@ -744,7 +744,21 @@ export function PhotoDetail({
       {/* Bottom action bar — portrait phones/tablets only.
           Houses prev/next nav and an info trigger (caption preview + pill).
           Replaces the old caption strip + header INFO button. */}
-      <div className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden">
+      <div
+        className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
+        onTouchStart={(e) => {
+          if (e.touches.length === 1) {
+            touchStartY.current = e.touches[0].clientY
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (touchStartY.current == null) return
+          const dy = e.changedTouches[0].clientY - touchStartY.current
+          touchStartY.current = null
+          if (dy < -40 && !info) { setInfo(true) }
+          if (dy > 40 && info) { setInfo(false) }
+        }}
+      >
         <button
           onClick={() => prev && goto(prev.slug)}
           disabled={!prev}
