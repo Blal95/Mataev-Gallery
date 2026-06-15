@@ -70,7 +70,7 @@ export default function AdminPage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">{backfill}</p>
       )}
       <Uploader onUploaded={() => setReload((n) => n + 1)} />
-      <TagManager />
+      <TagManager onChanged={() => setReload(n => n + 1)} />
       <PhotoList reloadKey={reload} />
     </main>
   )

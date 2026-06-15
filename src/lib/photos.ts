@@ -137,6 +137,10 @@ export async function listTagCounts(db: SqlDb): Promise<{ name: string; count: n
   return results
 }
 
+export async function renameTag(db: SqlDb, oldName: string, newName: string): Promise<void> {
+  await db.prepare("UPDATE tags SET name = ? WHERE name = ?").bind(newName, oldName).run()
+}
+
 export async function deleteTag(db: SqlDb, name: string): Promise<void> {
   const row = await db.prepare("SELECT id FROM tags WHERE name = ?").bind(name).first<{ id: number }>()
   if (!row) return

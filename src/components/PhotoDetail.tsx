@@ -775,7 +775,7 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)]"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
@@ -808,7 +808,7 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto max-h-full max-w-full cursor-pointer object-contain ${transitioning ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto absolute inset-0 h-full w-full cursor-pointer object-contain ${transitioning ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           ) : (
@@ -818,7 +818,7 @@ export function PhotoDetail({
               alt={photo.caption ?? `Frame ${index + 1}`}
               draggable={false}
               onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null) }}
-              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_30px_80px_rgba(0,0,0,0.9))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           )}
