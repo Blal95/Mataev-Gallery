@@ -1,6 +1,6 @@
 "use client"
 
-import { useTransition, useState } from "react"
+import { useTransition, useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/cn"
 import Link from "next/link"
@@ -38,6 +38,30 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  // Fade affordances: show on whichever side has more content to scroll to.
+  const [atStart, setAtStart] = useState(true)
+  const [atEnd, setAtEnd] = useState(false)
+
+  const updateFades = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const max = el.scrollWidth - el.clientWidth
+    setAtStart(el.scrollLeft <= 1)
+    setAtEnd(el.scrollLeft >= max - 1 || max <= 0)
+  }, [])
+
+  useEffect(() => {
+    updateFades()
+    const el = scrollRef.current
+    if (!el) return
+    el.addEventListener("scroll", updateFades, { passive: true })
+    window.addEventListener("resize", updateFades)
+    return () => {
+      el.removeEventListener("scroll", updateFades)
+      window.removeEventListener("resize", updateFades)
+    }
+  }, [updateFades, tags.length])
 
   function navigate(href: string) {
     setPendingHref(href)
@@ -52,29 +76,58 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
   }
 
   return (
-    <nav aria-label="Filter by tag" className="sticky top-0 z-20 flex items-stretch border-b border-line bg-bg">
-      <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto px-4 pt-2 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <Chip
-          href="/"
-          active={!active}
-          label="All"
-          loading={pendingHref === "/"}
-          onClick={() => navigate("/")}
+    <nav
+      aria-label="Filter by tag"
+      className="sticky top-0 z-30 flex items-stretch border-b border-line bg-bg [transform:translateZ(0)] [will-change:transform]"
+      style={{ isolation: "isolate" }}
+    >
+      <div className="relative flex min-w-0 flex-1">
+        <div
+          ref={scrollRef}
+          className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto scroll-smooth px-4 pt-2 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <Chip
+            href="/"
+            active={!active}
+            label="All"
+            loading={pendingHref === "/"}
+            onClick={() => navigate("/")}
+          />
+          {tags.map((t) => {
+            const href = `/t/${t.name}`
+            return (
+              <Chip
+                key={t.name}
+                href={href}
+                active={active === t.name}
+                label={t.name}
+                count={t.count}
+                loading={pendingHref === href}
+                onClick={() => navigate(href)}
+              />
+            )
+          })}
+        </div>
+        {/* Left fade — appears once scrolled away from the start */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-bg to-transparent transition-opacity duration-200",
+            atStart ? "opacity-0" : "opacity-100",
+          )}
         />
-        {tags.map((t) => {
-          const href = `/t/${t.name}`
-          return (
-            <Chip
-              key={t.name}
-              href={href}
-              active={active === t.name}
-              label={t.name}
-              count={t.count}
-              loading={pendingHref === href}
-              onClick={() => navigate(href)}
-            />
-          )
-        })}
+        {/* Right fade + chevron — signals more tags to slide to */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 right-0 flex w-10 items-center justify-end bg-gradient-to-l from-bg via-bg/80 to-transparent pb-1.5 pr-1 transition-opacity duration-200",
+            atEnd ? "opacity-0" : "opacity-100",
+          )}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-amber/80" aria-hidden>
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </div>
       </div>
       {/* Atlas — pinned right so it never scrolls with the tag list */}
       <Link
