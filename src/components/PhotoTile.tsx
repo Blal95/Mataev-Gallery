@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import { flagEmoji, flagUrl, displayCountry } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
@@ -14,12 +14,15 @@ export function PhotoTile({
   photo, index, priority,
 }: { photo: PhotoDTO; index: number; priority?: boolean }) {
   const [loaded, setLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
   // Compute placeholder for all tiles during SSR → blur visible on first paint, no flash of black.
   const [placeholder, setPlaceholder] = useState<string | null>(
     thumbhashToUrl(photo.thumbhash) ?? null
   )
   useEffect(() => {
     setPlaceholder(thumbhashToUrl(photo.thumbhash) ?? null)
+    // Cached images fire `load` before React hydrates — check complete on mount.
+    if (imgRef.current?.complete) setLoaded(true)
   }, [photo.thumbhash])
   const frame = String(index + 1).padStart(3, "0")
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
@@ -44,6 +47,7 @@ export function PhotoTile({
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        ref={imgRef}
         src={photo.url.thumb}
         alt={photo.caption ?? `Frame ${frame}`}
         width={photo.width}
