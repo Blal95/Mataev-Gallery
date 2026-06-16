@@ -18,7 +18,7 @@ export function PhotoTile({
   const [loaded, setLoaded] = useState(!!priority)
   // Computed client-only — keeps data URLs out of SSR HTML (~220KB saved).
   const [placeholder, setPlaceholder] = useState<string | null>(null)
-  useEffect(() => { setPlaceholder(thumbhashToUrl(photo.thumbhash)) }, [photo.thumbhash])
+  useEffect(() => { setPlaceholder(thumbhashToUrl(photo.thumbhash) ?? null) }, [photo.thumbhash])
   const NOMINAL_W = 320
   const intrinsicH = Math.round(NOMINAL_W / (photo.aspect > 0 ? photo.aspect : 1))
   const frame = String(index + 1).padStart(3, "0")
