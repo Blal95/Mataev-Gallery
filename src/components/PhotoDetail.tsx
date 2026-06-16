@@ -351,8 +351,10 @@ export function PhotoDetail({
     if (!el) return
     // Skip animation when restoring persisted state across photo navigation so
     // the panel stays put (no slide-up) and only the text content fades.
-    const instant = isRestoringRef.current
-    isRestoringRef.current = false
+    // Only check/clear the flag on info=true: the info=false firing runs first
+    // on mount and must not consume the flag before the info=true firing reads it.
+    const instant = info && isRestoringRef.current
+    if (info) isRestoringRef.current = false
     el.style.transition = instant ? "none" : "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
     el.style.transform = info ? "translateY(0)" : `translateY(${el.offsetHeight}px)`
     if (spacer) {
