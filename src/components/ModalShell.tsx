@@ -81,7 +81,7 @@ export function ModalShell({ children }: { children: React.ReactNode }) {
       aria-modal="true"
       aria-label="Photo detail"
       tabIndex={-1}
-      className="fixed inset-0 z-50 outline-none"
+      className="fixed inset-0 z-50 overflow-hidden outline-none"
     >
       {children}
     </div>

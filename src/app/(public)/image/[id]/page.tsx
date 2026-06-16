@@ -58,7 +58,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="fixed inset-0 z-50">
+      <div className="fixed inset-0 z-50 overflow-hidden">
         <PhotoDetail {...data} asModal={false} />
       </div>
     </>

@@ -46,12 +46,19 @@ export function PhotoDetail({
 }) {
   const router = useRouter()
   const [info, setInfo] = useState(false)
+  // Tracks whether the next info=true transition is a sessionStorage restore
+  // (should snap instantly, no slide animation) vs a user toggle (should animate).
+  const isRestoringRef = useRef(false)
+  // Closure-safe mirror of info for effects with [] deps.
+  const infoStateRef = useRef(false)
   // sessionStorage is unavailable during SSR, so the persisted info-panel
   // state has to load in an effect — a lazy useState initializer would render
   // different HTML on the server and trip hydration.
   useEffect(() => {
+    const stored = sessionStorage.getItem("detail-info") === "1"
+    if (stored) isRestoringRef.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInfo(sessionStorage.getItem("detail-info") === "1")
+    setInfo(stored)
   }, [])
   const [transitioning, setTransitioning] = useState(false)
   const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
@@ -63,6 +70,7 @@ export function PhotoDetail({
   const [videoDuration, setVideoDuration] = useState(photo.duration ?? 0)
 
   const [showComments, setShowComments] = useState(false)
+  const [contentVisible, setContentVisible] = useState(true)
   const [seenId, setSeenId] = useState(photo.id)
   const [zoom, setZoom] = useState(1)
   const [panX, setPanX] = useState(0)
@@ -120,7 +128,7 @@ export function PhotoDetail({
     zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
     setZoom(1); setPanX(0); setPanY(0)
     setCanPlay(false); setVideoTime(0); setIsPlaying(false)
-    setLargeLoaded(false)
+    setLargeLoaded(false); setContentVisible(false)
   }
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
@@ -310,7 +318,7 @@ export function PhotoDetail({
     const el = rootRef.current
     if (!vv || !el) return
     const apply = () => {
-      if (vv.scale > 1.001) {
+      if (vv.scale > 1.05) {
         el.style.transformOrigin = "0 0"
         el.style.transform = `translate(${vv.offsetLeft}px, ${vv.offsetTop}px) scale(${1 / vv.scale})`
       } else {
@@ -332,6 +340,7 @@ export function PhotoDetail({
   // Persist info panel open/close state across navigation
   useEffect(() => {
     sessionStorage.setItem("detail-info", info ? "1" : "0")
+    infoStateRef.current = info
   }, [info])
 
   // Drive the info panel position from React state — all gesture handlers
@@ -340,10 +349,14 @@ export function PhotoDetail({
     const el = infoRef.current
     const spacer = spacerRef.current
     if (!el) return
-    el.style.transition = "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
+    // Skip animation when restoring persisted state across photo navigation so
+    // the panel stays put (no slide-up) and only the text content fades.
+    const instant = isRestoringRef.current
+    isRestoringRef.current = false
+    el.style.transition = instant ? "none" : "transform 0.45s cubic-bezier(0.16,1,0.3,1)"
     el.style.transform = info ? "translateY(0)" : `translateY(${el.offsetHeight}px)`
     if (spacer) {
-      spacer.style.transition = "height 0.45s cubic-bezier(0.16,1,0.3,1)"
+      spacer.style.transition = instant ? "none" : "height 0.45s cubic-bezier(0.16,1,0.3,1)"
       spacer.style.height = info ? `${el.offsetHeight}px` : "0px"
     }
   }, [info])
@@ -397,7 +410,8 @@ export function PhotoDetail({
     }
   }, [])
 
-  // Swipe-up from bottom bar opens panel with real-time peek.
+  // Swipe-up from bottom bar opens panel; swipe-down closes it.
+  // infoStateRef lets this closure-free effect read current info state.
   useEffect(() => {
     const bar = bottomBarRef.current
     const panel = infoRef.current
@@ -405,28 +419,49 @@ export function PhotoDetail({
     let startY = 0, t0 = 0
     const onStart = (e: TouchEvent) => { startY = e.touches[0].clientY; t0 = Date.now() }
     const onMove = (e: TouchEvent) => {
-      e.preventDefault()
       const dy = e.touches[0].clientY - startY
-      if (dy < 0) {
+      if (dy < 0 && !infoStateRef.current) {
+        // Swipe up — peek open
+        e.preventDefault()
         panel.style.transition = "none"
         panel.style.transform = `translateY(${Math.max(0, panel.offsetHeight + dy)}px)`
         if (spacerRef.current) {
           spacerRef.current.style.transition = "none"
           spacerRef.current.style.height = `${Math.min(panel.offsetHeight, -dy)}px`
         }
+      } else if (dy > 0 && infoStateRef.current) {
+        // Swipe down — peek close
+        e.preventDefault()
+        panel.style.transition = "none"
+        panel.style.transform = `translateY(${Math.min(panel.offsetHeight, dy)}px)`
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = "none"
+          spacerRef.current.style.height = `${Math.max(0, panel.offsetHeight - dy)}px`
+        }
       }
     }
     const onEnd = (e: TouchEvent) => {
       const dy = e.changedTouches[0].clientY - startY
       const vel = dy / Math.max(1, Date.now() - t0)
-      const open = dy < -40 || vel < -0.3
-      panel.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
-      panel.style.transform = open ? "translateY(0)" : `translateY(${panel.offsetHeight}px)`
-      if (spacerRef.current) {
-        spacerRef.current.style.transition = "height 0.42s cubic-bezier(0.16,1,0.3,1)"
-        spacerRef.current.style.height = open ? `${panel.offsetHeight}px` : "0px"
+      if (!infoStateRef.current) {
+        const open = dy < -40 || vel < -0.3
+        panel.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
+        panel.style.transform = open ? "translateY(0)" : `translateY(${panel.offsetHeight}px)`
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = "height 0.42s cubic-bezier(0.16,1,0.3,1)"
+          spacerRef.current.style.height = open ? `${panel.offsetHeight}px` : "0px"
+        }
+        setInfo(open)
+      } else if (dy > 0) {
+        const close = vel > 0.5 || dy > panel.offsetHeight * 0.38
+        panel.style.transition = "transform 0.42s cubic-bezier(0.16,1,0.3,1)"
+        panel.style.transform = close ? `translateY(${panel.offsetHeight}px)` : "translateY(0)"
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = "height 0.42s cubic-bezier(0.16,1,0.3,1)"
+          spacerRef.current.style.height = close ? "0px" : `${panel.offsetHeight}px`
+        }
+        if (close) setInfo(false)
       }
-      setInfo(open)
     }
     bar.addEventListener("touchstart", onStart, { passive: true })
     bar.addEventListener("touchmove", onMove, { passive: false })
@@ -597,7 +632,7 @@ export function PhotoDetail({
       : "none"
 
   return (
-    <div ref={rootRef} className="flex h-dvh w-full overflow-hidden bg-bg">
+    <div ref={rootRef} className="flex h-full w-full overflow-hidden bg-bg">
       {/* Progress bar */}
       <div
         aria-hidden
@@ -613,6 +648,9 @@ export function PhotoDetail({
             Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
             <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
           </p>
+
+          {/* Metadata — fades when navigating between photos */}
+          <div style={{ opacity: contentVisible ? 1 : 0, transition: "opacity 0.25s ease" }}>
 
           {/* Caption — primary read */}
           {photo.caption && (
@@ -728,6 +766,8 @@ export function PhotoDetail({
               <PhotoComments photoId={photo.id} />
             </div>
           )}
+
+          </div>{/* /fade wrapper */}
         </div>
       </aside>
 
@@ -776,13 +816,13 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)]"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint]"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-y-0 inset-x-2 sm:inset-x-14 max-lg:landscape:inset-x-2">
+        <div className="pointer-events-none absolute inset-y-0 lg:inset-y-6 inset-x-2 sm:inset-x-14 max-lg:landscape:inset-x-2 max-lg:landscape:inset-y-0">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {isVideo ? (
@@ -795,7 +835,7 @@ export function PhotoDetail({
               playsInline
               onCanPlay={() => setCanPlay(true)}
               onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration ?? photo.duration ?? 0)}
-              onLoadedData={() => setTransitioning(false)}
+              onLoadedData={() => { setTransitioning(false); setContentVisible(true) }}
               onTimeUpdate={() => { setVideoTime(videoRef.current?.currentTime ?? 0) }}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
@@ -807,11 +847,13 @@ export function PhotoDetail({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photo.url.large}
+              srcSet={`${photo.url.large} 2048w${photo.width > 2048 ? `, ${photo.url.original} ${photo.width}w` : ""}`}
+              sizes="(min-width: 1024px) calc(100vw - 340px), 100vw"
               alt={photo.caption ?? `Frame ${index + 1}`}
               draggable={false}
               decoding="async"
               fetchPriority="high"
-              onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null) }}
+              onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
               className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
@@ -870,7 +912,7 @@ export function PhotoDetail({
           Replaces the old caption strip + header INFO button. */}
       <div
         ref={bottomBarRef}
-        className="relative z-30 flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
+        className="relative z-[60] flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
       >
         <button
           onClick={() => prev && goto(prev.slug, 'right')}
@@ -934,6 +976,7 @@ export function PhotoDetail({
             className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 sm:px-6"
             style={{ maxHeight: "min(55vh, 400px)" }}
           >
+          <div style={{ opacity: contentVisible ? 1 : 0, transition: "opacity 0.25s ease" }}>
               {/* Caption + location + date — repeated here so it never hides under the sheet */}
               {photo.caption && (
                 <>
@@ -1029,6 +1072,7 @@ export function PhotoDetail({
                   {showComments ? "Hide comments" : photo.commentCount > 0 ? `Comments · ${photo.commentCount}` : "Comments →"}
                 </button>
               </div>
+          </div>{/* /fade wrapper */}
             </div>
 
             {/* Comments */}
