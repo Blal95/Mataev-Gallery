@@ -13,12 +13,15 @@ function Tick({ pos }: { pos: string }) {
 export function PhotoTile({
   photo, index, priority,
 }: { photo: PhotoDTO; index: number; priority?: boolean }) {
-  // Priority tiles (first screenful): start loaded → opacity-100 immediately.
-  // first paint without waiting for hydration or the onLoad event.
-  const [loaded, setLoaded] = useState(!!priority)
-  // Computed client-only — keeps data URLs out of SSR HTML (~220KB saved).
-  const [placeholder, setPlaceholder] = useState<string | null>(null)
-  useEffect(() => { setPlaceholder(thumbhashToUrl(photo.thumbhash) ?? null) }, [photo.thumbhash])
+  const [loaded, setLoaded] = useState(false)
+  // Priority tiles: compute placeholder during SSR → blur visible on first paint before JS.
+  // Non-priority tiles: compute client-side via useEffect → keeps SSR HTML small.
+  const [placeholder, setPlaceholder] = useState<string | null>(
+    priority ? (thumbhashToUrl(photo.thumbhash) ?? null) : null
+  )
+  useEffect(() => {
+    if (!priority) setPlaceholder(thumbhashToUrl(photo.thumbhash) ?? null)
+  }, [photo.thumbhash, priority])
   const NOMINAL_W = 320
   const intrinsicH = Math.round(NOMINAL_W / (photo.aspect > 0 ? photo.aspect : 1))
   const frame = String(index + 1).padStart(3, "0")
@@ -45,8 +48,6 @@ export function PhotoTile({
         // immediately visible — no 0.45s opacity-0 delay.
         ...(priority ? {} : {
           animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${Math.min(index, 8) * 30}ms both`,
-          contentVisibility: "auto",
-          containIntrinsicSize: `${NOMINAL_W}px ${intrinsicH}px`,
         }),
       }}
     >
