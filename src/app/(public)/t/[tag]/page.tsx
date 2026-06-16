@@ -7,7 +7,7 @@ import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const revalidate = 0
+export const revalidate = 300
 
 export default async function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = await params
@@ -22,10 +22,10 @@ export default async function TagPage({ params }: { params: Promise<{ tag: strin
     <>
       {cdnOrigin && <link rel="preconnect" href={cdnOrigin} crossOrigin="anonymous" />}
       {cdnOrigin && <link rel="dns-prefetch" href={cdnOrigin} />}
-      {photos.slice(0, 6).map((p) => (
+      {photos.slice(0, 12).map((p) => (
         <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="high" />
       ))}
-      {photos.slice(6, 24).map((p) => (
+      {photos.slice(12, 24).map((p) => (
         <link key={p.id} rel="preload" as="image" href={p.url.thumb} fetchPriority="low" />
       ))}
     <main>

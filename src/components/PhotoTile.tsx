@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import { flagEmoji, flagUrl, displayCountry } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
@@ -11,16 +11,16 @@ function Tick({ pos }: { pos: string }) {
 }
 
 export function PhotoTile({
-  photo, width, index, priority,
-}: { photo: PhotoDTO; width: number; index: number; priority?: boolean }) {
-  const delay = `${Math.min(index, 8) * 30}ms`
-  const [loaded, setLoaded] = useState(false)
-  const placeholder = useMemo(() => thumbhashToUrl(photo.thumbhash), [photo.thumbhash])
-  const colW = Math.round(width)
-  // Offscreen tiles skip layout + paint entirely (content-visibility:auto).
-  // The intrinsic size keeps the scrollbar stable; priority tiles (first
-  // screenful / LCP) opt out so they paint without containment.
-  const intrinsicH = Math.round(colW / (photo.aspect > 0 ? photo.aspect : 1))
+  photo, index, priority,
+}: { photo: PhotoDTO; index: number; priority?: boolean }) {
+  // Priority tiles (first screenful): start loaded → opacity-100 immediately.
+  // first paint without waiting for hydration or the onLoad event.
+  const [loaded, setLoaded] = useState(!!priority)
+  // Computed client-only — keeps data URLs out of SSR HTML (~220KB saved).
+  const [placeholder, setPlaceholder] = useState<string | null>(null)
+  useEffect(() => { setPlaceholder(thumbhashToUrl(photo.thumbhash)) }, [photo.thumbhash])
+  const NOMINAL_W = 320
+  const intrinsicH = Math.round(NOMINAL_W / (photo.aspect > 0 ? photo.aspect : 1))
   const frame = String(index + 1).padStart(3, "0")
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
@@ -41,8 +41,13 @@ export function PhotoTile({
       className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)] active:scale-[0.985] active:duration-75"
       style={{
         aspectRatio: photo.aspect > 0 ? photo.aspect : 1,
-        animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${delay} both`,
-        ...(priority ? {} : { contentVisibility: "auto", containIntrinsicSize: `${colW}px ${intrinsicH}px` }),
+        // Priority tiles skip the entrance animation so above-fold images are
+        // immediately visible — no 0.45s opacity-0 delay.
+        ...(priority ? {} : {
+          animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${Math.min(index, 8) * 30}ms both`,
+          contentVisibility: "auto",
+          containIntrinsicSize: `${NOMINAL_W}px ${intrinsicH}px`,
+        }),
       }}
     >
       {placeholder && !loaded && (
@@ -53,7 +58,7 @@ export function PhotoTile({
       <img
         src={photo.url.thumb}
         srcSet={srcSet}
-        sizes={`${colW}px`}
+        sizes="(min-width:1440px) 19vw, (min-width:1024px) 24vw, (min-width:640px) 31vw, 47vw"
         alt={photo.caption ?? `Frame ${frame}`}
         width={photo.width}
         height={photo.height}

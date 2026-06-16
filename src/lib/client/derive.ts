@@ -21,13 +21,34 @@ async function loadBitmap(file: File): Promise<ImageBitmap> {
   }
 }
 
+// Detect WebP canvas-encoding support once per session (Safari < 16 silently
+// returns a PNG blob when asked for WebP, causing huge uncompressed files).
+let _webpSupported: boolean | null = null
+function webpSupported(): Promise<boolean> {
+  if (_webpSupported !== null) return Promise.resolve(_webpSupported)
+  const c = document.createElement("canvas")
+  c.width = 1; c.height = 1
+  return new Promise((resolve) => {
+    c.toBlob((b) => {
+      _webpSupported = b?.type === "image/webp"
+      resolve(_webpSupported!)
+    }, "image/webp", 0.5)
+  })
+}
+
 function scaleTo(bmp: ImageBitmap, maxEdge: number, quality: number): Promise<Blob> {
   const scale = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height))
   const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale)
   const canvas = document.createElement("canvas")
   canvas.width = w; canvas.height = h
-  canvas.getContext("2d")!.drawImage(bmp, 0, 0, w, h)
-  return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/webp", quality))
+  const ctx = canvas.getContext("2d")!
+  // Fill black so alpha is opaque — JPEG doesn't support transparency.
+  ctx.fillStyle = "#000"
+  ctx.fillRect(0, 0, w, h)
+  ctx.drawImage(bmp, 0, 0, w, h)
+  return webpSupported().then((ok) =>
+    new Promise((resolve) => canvas.toBlob((b) => resolve(b!), ok ? "image/webp" : "image/jpeg", quality))
+  )
 }
 
 const MAX_RAW_BYTES = 15 * 1024 * 1024 // above this, generate a 2400px WebP archive instead of sending raw

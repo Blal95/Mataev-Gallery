@@ -78,15 +78,8 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
   return (
     <nav
       aria-label="Filter by tag"
-      className={cn(
-        "sticky top-0 z-30 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md [transform:translateZ(0)] [will-change:transform]",
-        // This pseudo-element bleeds the blurry background up into the iOS status bar space
-        "before:absolute before:inset-x-0 before:bottom-full before:h-[100px] before:bg-bg/85 before:backdrop-blur-md"
-      )}
-      style={{ 
-        paddingTop: "env(safe-area-inset-top)",
-        isolation: "isolate" 
-      }}
+      className="sticky top-0 z-30 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md [transform:translateZ(0)] [will-change:transform]"
+      style={{ paddingTop: "env(safe-area-inset-top)", isolation: "isolate" }}
     >
       <div className="relative flex min-w-0 flex-1">
         <div

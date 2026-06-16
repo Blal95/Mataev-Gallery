@@ -7,6 +7,7 @@ import { reverseGeocode } from "@/lib/geocode"
 import { newId } from "@/lib/ids"
 import { parseTags } from "@/lib/tags"
 import { sameOriginGuard } from "@/lib/api"
+import { revalidatePath } from "next/cache"
 import type { PhotoRow } from "@/types/photo"
 
 export const runtime = "nodejs"
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
     views: 0,
   }
   await insertPhoto(await db(), row, parseTags(meta.tags ?? ""))
+  revalidatePath("/", "layout")
 
   // Presigned URL so the browser uploads the original straight to R2, skipping
   // the Worker entirely. Null when R2 credentials aren't configured — the
