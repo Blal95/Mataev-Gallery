@@ -54,11 +54,13 @@ export function PhotoDetail({
   // sessionStorage is unavailable during SSR, so the persisted info-panel
   // state has to load in an effect — a lazy useState initializer would render
   // different HTML on the server and trip hydration.
+  const [infoReady, setInfoReady] = useState(false)
   useEffect(() => {
     const stored = sessionStorage.getItem("detail-info") === "1"
     if (stored) isRestoringRef.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setInfo(stored)
+    setInfoReady(true)
   }, [])
   const [transitioning, setTransitioning] = useState(false)
   const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
@@ -141,7 +143,7 @@ export function PhotoDetail({
 
   // Info sheet only exists below lg — desktop has the permanent sidebar
   const toggleInfo = () => {
-    if (typeof window !== "undefined" && (window.innerWidth >= 1024 || window.matchMedia("(orientation: landscape)").matches)) return
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) return
     setInfo((v) => !v)
   }
 
@@ -203,12 +205,9 @@ export function PhotoDetail({
     // Swipe nav only when not zoomed (panning owns the gesture while zoomed)
     if (zoomRef.current > 1) return
 
-    // Vertical swipe — open/close info sheet on portrait mobile
+    // Vertical swipe — open/close info sheet on mobile (portrait + landscape)
     if (Math.abs(dy) > Math.abs(dx)) {
-      const isPortraitMobile = typeof window !== "undefined"
-        && window.innerWidth < 1024
-        && !window.matchMedia("(orientation: landscape)").matches
-      if (isPortraitMobile) {
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
         if (dy < -50 && !info) { setInfo(true); return }
         if (dy > 50 && info) { setInfo(false); return }
       }
@@ -260,7 +259,7 @@ export function PhotoDetail({
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
       if (e.key === "ArrowLeft" && prev) goto(prev.slug, 'right')
       if (e.key === "ArrowRight" && next) goto(next.slug, 'left')
-      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024 && !window.matchMedia("(orientation: landscape)").matches) setInfo((v) => !v)
+      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
       if (e.key === "+" || e.key === "=") zoomAt(window.innerWidth / 2, window.innerHeight / 2, Math.min(5, zoomRef.current * 1.4), true)
@@ -643,7 +642,7 @@ export function PhotoDetail({
       />
 
       {/* Desktop sidebar — always visible on lg+, all metadata lives here */}
-      <aside className="relative z-30 hidden w-[260px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex max-lg:landscape:w-[180px] lg:w-[340px] lg:flex">
+      <aside className="relative z-30 hidden w-[340px] shrink-0 flex-col border-r border-line bg-bg-2/50 lg:flex">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6 max-lg:landscape:px-4 max-lg:landscape:pt-3 max-lg:landscape:pb-4">
           {/* Frame counter */}
           <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber max-lg:landscape:mb-3">
@@ -777,8 +776,8 @@ export function PhotoDetail({
       <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
 
       {/* Portrait: floating gradient + controls overlay — zero in-flow height, photo gets full stage */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent landscape:hidden lg:hidden" />
-      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden backdrop-blur-md bg-bg/85">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent lg:hidden" />
+      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden backdrop-blur-md bg-bg/85">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -788,19 +787,19 @@ export function PhotoDetail({
         </button>
       </div>
 
-      {/* Landscape/desktop in-flow header */}
-      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-4 pb-3 pt-[max(0.875rem,env(safe-area-inset-top))] landscape:flex sm:px-6 sm:py-4 lg:flex">
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber landscape:invisible lg:invisible">
+      {/* Desktop in-flow header — lg only */}
+      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-6 py-4 lg:flex">
+        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
         </span>
         {!info && (
-          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block landscape:hidden">
+          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
             <span className="text-muted-2">← →</span> previous / next
           </p>
         )}
         <div className="flex shrink-0 items-center gap-0.5">
-          <div className="hidden items-center landscape:flex lg:flex">
+          <div className="flex items-center">
             <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
               <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
             </button>
@@ -824,7 +823,7 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-y-0 lg:inset-y-6 inset-x-2 sm:inset-x-14 max-lg:landscape:inset-x-2 max-lg:landscape:inset-y-0">
+        <div className="pointer-events-none absolute inset-y-0 lg:inset-y-6 inset-x-2 lg:inset-x-14">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {isVideo ? (
@@ -914,7 +913,7 @@ export function PhotoDetail({
           Replaces the old caption strip + header INFO button. */}
       <div
         ref={bottomBarRef}
-        className="relative z-[60] flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
+        className="relative z-[60] flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         <button
           onClick={() => prev && goto(prev.slug, 'right')}
@@ -928,21 +927,21 @@ export function PhotoDetail({
         <button
           onClick={toggleInfo}
           aria-expanded={info}
-          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-3"
+          className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-3 landscape:py-2"
         >
-          {!info && photo.caption && (
-            <p className="line-clamp-1 px-2 font-serif text-[15px] italic leading-tight text-text/80">
+          {infoReady && !info && photo.caption && (
+            <p className="line-clamp-1 px-2 font-serif text-[15px] italic leading-tight text-text/80 landscape:hidden">
               {photo.caption}
             </p>
           )}
-          {!info && (locationLine || date) && (
-            <p className="truncate px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+          {infoReady && !info && (locationLine || date) && (
+            <p className="truncate px-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted landscape:hidden">
               {locationLine
                 ? <>{flag ? <span className="mr-1">{flag}</span> : flagSrc ? <img src={flagSrc} alt="" aria-hidden className="mr-1 inline-block h-[10px] w-auto align-middle" /> : null}{locationLine}</>
                 : date}
             </p>
           )}
-          {!info && <span aria-hidden className="h-[3px] w-8 rounded-full bg-line-2" />}
+          {infoReady && !info && <span aria-hidden className="h-[3px] w-8 rounded-full bg-line-2" />}
         </button>
 
         <button
@@ -957,14 +956,14 @@ export function PhotoDetail({
 
       {/* Spacer that grows in sync with the info panel so the stage shrinks
           and the photo remains fully visible when details are open */}
-      <div ref={spacerRef} className="shrink-0 landscape:hidden lg:hidden" style={{ height: 0 }} />
+      <div ref={spacerRef} className="shrink-0 lg:hidden" style={{ height: 0 }} />
 
       {/* Info sheet — absolute bottom sheet, slides up over the action bar.
           GPU-composited translateY animation; real-time drag via native listeners above. */}
       <div
         ref={infoRef}
         aria-hidden={!info}
-        className={`absolute inset-x-0 bottom-0 z-50 landscape:hidden lg:hidden ${info ? "" : "pointer-events-none"}`}
+        className={`absolute inset-x-0 bottom-0 z-50 lg:hidden ${info ? "" : "pointer-events-none"}`}
         style={{ transform: "translateY(100%)" }}
       >
         {/* Drag handle — touch listeners live here, not on the panel, so scrollable content stays native */}
