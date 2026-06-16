@@ -6,36 +6,43 @@ import { thumbhashToUrl } from "@/lib/thumbhash"
 import { flagEmoji, flagUrl, displayCountry } from "@/lib/format"
 import type { PhotoDTO } from "@/types/photo"
 
-function Tick({ pos }: { pos: string }) {
-  return <span aria-hidden className={`pointer-events-none absolute h-2 w-2 border-amber/0 transition-colors duration-300 group-hover:border-amber/70 ${pos}`} />
-}
 
 export function PhotoTile({
-  photo, index, priority,
-}: { photo: PhotoDTO; index: number; priority?: boolean }) {
+  photo, index, priority, aspect, useLarge,
+}: { photo: PhotoDTO; index: number; priority?: boolean; aspect?: number; useLarge?: boolean }) {
   const [loaded, setLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
-  // Compute placeholder for all tiles during SSR → blur visible on first paint, no flash of black.
   const [placeholder, setPlaceholder] = useState<string | null>(
     thumbhashToUrl(photo.thumbhash) ?? null
   )
   useEffect(() => {
     setPlaceholder(thumbhashToUrl(photo.thumbhash) ?? null)
-    // Cached images fire `load` before React hydrates — check complete on mount.
     if (imgRef.current?.complete) setLoaded(true)
   }, [photo.thumbhash])
   const frame = String(index + 1).padStart(3, "0")
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
   const flagSrc = flag == null ? flagUrl(photo.countryCode, photo.lat, photo.lon) : null
   const locationLine = [photo.place, displayCountry(photo.country, photo.countryCode, photo.lat, photo.lon)].filter(Boolean).join(", ")
+  const src = useLarge ? photo.url.large : photo.url.thumb
+
+  const prefetchLarge = () => {
+    if (photo.mediaType === "video" || useLarge) return
+    const link = document.createElement("link")
+    link.rel = "preload"
+    link.as = "image"
+    link.href = photo.url.large
+    document.head.appendChild(link)
+  }
 
   return (
     <Link
       href={`/image/${photo.slug}`}
       scroll={false}
-      className="group relative block w-full overflow-hidden border border-line bg-bg-2 outline-none transition-[transform,border-color,box-shadow] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[3px] hover:border-line-2 hover:shadow-[0_18px_44px_-14px_rgba(0,0,0,0.8)] active:scale-[0.985] active:duration-75"
+      onMouseEnter={prefetchLarge}
+      onTouchStart={prefetchLarge}
+      className="group relative block w-full overflow-hidden rounded-[6px] bg-bg-2 outline-none transition-[transform,box-shadow,opacity] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:z-10 hover:-translate-y-[4px] hover:shadow-[0_24px_60px_-8px_rgba(0,0,0,0.85)] active:scale-[0.982] active:duration-75"
       style={{
-        aspectRatio: photo.aspect > 0 ? photo.aspect : 1,
+        aspectRatio: aspect ?? (photo.aspect > 0 ? photo.aspect : 1),
         ...(priority ? {} : {
           animation: `tile-in 0.45s cubic-bezier(0.16,1,0.3,1) ${Math.min(index, 8) * 15}ms both`,
         }),
@@ -48,7 +55,8 @@ export function PhotoTile({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
-        src={photo.url.thumb}
+        src={src}
+        srcSet={`${src} 1x, ${photo.url.large} 2x`}
         alt={photo.caption ?? `Frame ${frame}`}
         width={photo.width}
         height={photo.height}
@@ -59,8 +67,8 @@ export function PhotoTile({
         className={`relative h-full w-full object-cover transition-[opacity,transform] duration-500 ease-out group-hover:scale-[1.03] ${loaded ? "opacity-100" : "opacity-0"}`}
       />
 
-      {/* Frame number */}
-      <span className="pointer-events-none absolute left-2 top-2 font-mono text-[9px] tracking-[0.14em] text-amber/85 mix-blend-screen drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+      {/* Frame number — visible on hover only */}
+      <span className="pointer-events-none absolute left-2 top-2 font-mono text-[9px] tracking-[0.14em] text-amber/80 opacity-0 mix-blend-screen drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] transition-opacity duration-300 group-hover:opacity-100">
         F{frame}
       </span>
 
@@ -74,11 +82,6 @@ export function PhotoTile({
           </div>
         </div>
       )}
-
-      <Tick pos="left-1 top-1 border-l border-t" />
-      <Tick pos="right-1 top-1 border-r border-t" />
-      <Tick pos="left-1 bottom-1 border-l border-b" />
-      <Tick pos="right-1 bottom-1 border-r border-b" />
 
       {/* Hover overlay */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0908]/90 via-[#0a0908]/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

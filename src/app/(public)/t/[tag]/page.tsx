@@ -7,7 +7,7 @@ import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const revalidate = 300
+export const revalidate = 3600
 
 export default async function TagPage({ params }: { params: Promise<{ tag: string }> }) {
   const { tag } = await params
