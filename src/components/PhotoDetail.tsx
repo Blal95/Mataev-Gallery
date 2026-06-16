@@ -848,8 +848,6 @@ export function PhotoDetail({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photo.url.large}
-              srcSet={`${photo.url.large} 2048w${photo.width > 2048 ? `, ${photo.url.original} ${photo.width}w` : ""}`}
-              sizes="(min-width: 1024px) calc(100vw - 340px), 100vw"
               alt={photo.caption ?? `Frame ${index + 1}`}
               draggable={false}
               decoding="async"
