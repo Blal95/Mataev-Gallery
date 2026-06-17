@@ -4,6 +4,8 @@ import { useTransition, useState, useRef, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/cn"
 import Link from "next/link"
+import Logo from "@/components/Logo"
+import { site } from "@/config/site"
 import type { TagCount } from "@/types/photo"
 
 function Chip({
@@ -39,7 +41,6 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
   const [isPending, startTransition] = useTransition()
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  // Fade affordances: show on whichever side has more content to scroll to.
   const [atStart, setAtStart] = useState(true)
   const [atEnd, setAtEnd] = useState(false)
 
@@ -70,21 +71,40 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
     })
   }
 
-  // Clear pending once transition resolves
   if (!isPending && pendingHref !== null) {
     setPendingHref(null)
   }
 
   return (
-    <nav
-      aria-label="Filter by tag"
-      className="sticky top-0 z-30 flex items-stretch border-b border-line bg-bg/85 backdrop-blur-md [transform:translateZ(0)] [will-change:transform]"
+    <header
+      aria-label="Site header"
+      className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md [transform:translateZ(0)] [will-change:transform]"
       style={{ paddingTop: "env(safe-area-inset-top)", isolation: "isolate" }}
     >
-      <div className="relative flex min-w-0 flex-1">
+      {/* Row 1 — wordmark + Atlas */}
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+        <Link href="/" className="group flex items-center gap-2.5">
+          <Logo iconOnly className="h-5 w-auto text-amber transition-colors group-hover:text-text" />
+          <span className="font-mono text-sm font-medium uppercase tracking-[0.38em] text-text transition-colors group-hover:text-amber">
+            {site.name}
+          </span>
+        </Link>
+        <Link
+          href="/atlas"
+          className="group flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-2 transition-colors hover:text-text"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="h-3.5 w-3.5 text-muted transition-colors group-hover:text-amber" aria-hidden>
+            <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" />
+          </svg>
+          Atlas
+        </Link>
+      </div>
+
+      {/* Row 2 — tag chips */}
+      <div className="relative flex min-w-0">
         <div
           ref={scrollRef}
-          className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto scroll-smooth px-4 pt-2 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto scroll-smooth px-4 pb-2.5 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <Chip
             href="/"
@@ -108,7 +128,7 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
             )
           })}
         </div>
-        {/* Left fade — appears once scrolled away from the start */}
+        {/* Left fade */}
         <div
           aria-hidden
           className={cn(
@@ -116,7 +136,7 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
             atStart ? "opacity-0" : "opacity-100",
           )}
         />
-        {/* Right fade + chevron — signals more tags to slide to */}
+        {/* Right fade + chevron */}
         <div
           aria-hidden
           className={cn(
@@ -129,16 +149,6 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
           </svg>
         </div>
       </div>
-      {/* Atlas — pinned right so it never scrolls with the tag list */}
-      <Link
-        href="/atlas"
-        className="group flex shrink-0 items-center gap-1.5 border-l border-line px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-2 transition-colors hover:text-text sm:px-6"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="h-3.5 w-3.5 text-muted transition-colors group-hover:text-amber" aria-hidden>
-          <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" />
-        </svg>
-        Atlas
-      </Link>
-    </nav>
+    </header>
   )
 }

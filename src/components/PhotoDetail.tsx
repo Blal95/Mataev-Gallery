@@ -794,40 +794,37 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        {/* Absolute fill — bypasses iOS Safari h-full flex-child collapse bug */}
-        <div className="absolute inset-0 flex items-center justify-center p-3 max-lg:landscape:p-2 lg:p-8">
-          {isVideo ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
-            <video
-              ref={videoRef}
-              src={photo.url.original}
-              loop
-              muted={isMuted}
-              playsInline
-              onCanPlay={() => setCanPlay(true)}
-              onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration ?? photo.duration ?? 0)}
-              onLoadedData={() => { setTransitioning(false); setContentVisible(true) }}
-              onTimeUpdate={() => { setVideoTime(videoRef.current?.currentTime ?? 0) }}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onClick={togglePlayback}
-              className={`max-w-full max-h-full w-auto h-auto object-contain cursor-pointer pointer-events-auto ${transitioning ? "opacity-0" : "opacity-100"}`}
-              style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo.url.large}
-              alt={photo.caption ?? `Frame ${index + 1}`}
-              draggable={false}
-              decoding="async"
-              fetchPriority="high"
-              onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
-              className={`max-w-full max-h-full w-auto h-auto object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] pointer-events-auto ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
-              style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
-            />
-          )}
-        </div>
+        {isVideo ? (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            ref={videoRef}
+            src={photo.url.original}
+            loop
+            muted={isMuted}
+            playsInline
+            onCanPlay={() => setCanPlay(true)}
+            onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration ?? photo.duration ?? 0)}
+            onLoadedData={() => { setTransitioning(false); setContentVisible(true) }}
+            onTimeUpdate={() => { setVideoTime(videoRef.current?.currentTime ?? 0) }}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onClick={togglePlayback}
+            className={`absolute inset-0 w-full h-full object-contain cursor-pointer ${transitioning ? "opacity-0" : "opacity-100"}`}
+            style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo.url.large}
+            alt={photo.caption ?? `Frame ${index + 1}`}
+            draggable={false}
+            decoding="async"
+            fetchPriority="high"
+            onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
+            className={`absolute inset-0 w-full h-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+            style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
+          />
+        )}
       </div>
 
       {/* Video scrubber */}
