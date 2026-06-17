@@ -124,7 +124,7 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
             atEnd ? "opacity-0" : "opacity-100",
           )}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-amber/80" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="h-3.5 w-3.5 text-amber/80" aria-hidden>
             <path d="M9 18l6-6-6-6" />
           </svg>
         </div>
@@ -134,7 +134,7 @@ export function TagIndex({ tags, active }: { tags: TagCount[]; active?: string }
         href="/atlas"
         className="group flex shrink-0 items-center gap-1.5 border-l border-line px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-2 transition-colors hover:text-text sm:px-6"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-muted transition-colors group-hover:text-amber" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" className="h-3.5 w-3.5 text-muted transition-colors group-hover:text-amber" aria-hidden>
           <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14M15 6v14" />
         </svg>
         Atlas

@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${serif.variable} ${mono.variable}`}>
       <head>
+        <style dangerouslySetInnerHTML={{ __html: "html,body{background:#0a0908;color:#efe8dd}" }} />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
         <script
           type="application/ld+json"

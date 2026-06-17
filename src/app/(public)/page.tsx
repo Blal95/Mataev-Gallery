@@ -6,7 +6,7 @@ import { TagIndex } from "@/components/TagIndex"
 import { EmptyState } from "@/components/EmptyState"
 import { PAGE_SIZE } from "@/config/site"
 
-export const revalidate = 3600
+export const dynamic = "force-dynamic"
 
 export default async function Home() {
   const [database, base] = await Promise.all([db(), cdnBase()])

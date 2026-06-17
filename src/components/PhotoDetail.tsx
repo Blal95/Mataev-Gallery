@@ -642,9 +642,9 @@ export function PhotoDetail({
         style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
       />
 
-    {/* Sidebar — landscape phones (300px) and desktop (340px) */}
-      <aside className="relative z-30 hidden w-[300px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full max-lg:landscape:h-full">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-3 lg:px-6 lg:pb-8 lg:pt-6">
+    {/* Sidebar — landscape phones (200px) and desktop (340px) */}
+      <aside className="relative z-30 hidden w-[200px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2.5 lg:px-6 lg:pb-8 lg:pt-6">
           {/* Frame counter */}
           <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:mb-6 lg:text-[10px] lg:tracking-[0.28em]">
             Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
@@ -658,7 +658,7 @@ export function PhotoDetail({
           {photo.caption && (
             <div className="mb-3 lg:mb-6">
               <p className="mb-1.5 font-mono text-[8px] uppercase tracking-[0.2em] text-muted/60 lg:mb-2 lg:text-[8.5px] lg:tracking-[0.24em]">Caption</p>
-              <p className="font-serif text-[15px] italic leading-[1.35] tracking-[-0.01em] text-text lg:text-[23px]">
+              <p className="font-serif text-[13px] italic leading-[1.35] tracking-[-0.01em] text-text lg:text-[23px]">
                 {photo.caption}
               </p>
             </div>
@@ -704,7 +704,7 @@ export function PhotoDetail({
 
           {/* Camera */}
           {!isVideo && (photo.camera || photo.lens || cameraSpecs.length > 0) && (
-            <Section label="Camera" className="mb-3 landscape:hidden lg:mb-5 lg:block">
+            <Section label="Camera" className="mb-3 lg:mb-5">
               {photo.camera && (
                 <p className="font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-text/90">{photo.camera}</p>
               )}
@@ -721,7 +721,7 @@ export function PhotoDetail({
 
           {/* File */}
           {fileSpecs.length > 0 && (
-            <Section label="File" className="mb-3 landscape:hidden lg:mb-5 lg:block">
+            <Section label="File" className="mb-3 lg:mb-5">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
               </div>
@@ -730,7 +730,7 @@ export function PhotoDetail({
 
           {/* Tags */}
           {photo.tags.length > 0 && (
-            <Section label="Tags" className="mb-3 landscape:hidden lg:mb-5 lg:block">
+            <Section label="Tags" className="mb-3 lg:mb-5">
               <div className="flex flex-wrap gap-1.5">
                 {photo.tags.map((t) => (
                   <Link
@@ -746,7 +746,7 @@ export function PhotoDetail({
           )}
 
           {/* Full size + comments */}
-          <div className="flex items-center justify-between gap-4 border-t border-line pt-4 landscape:hidden lg:flex">
+          <div className="flex items-center justify-between gap-4 border-t border-line pt-4 lg:flex">
             <a
               href={photo.url.original}
               target="_blank"
@@ -789,16 +789,7 @@ export function PhotoDetail({
       </div>
 
       {/* Landscape + desktop in-flow header */}
-      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-3 py-2 landscape:flex lg:px-6 lg:py-4 lg:flex">
-        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber invisible">
-          Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
-          <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
-        </span>
-        {!info && (
-          <p className="hidden min-w-0 flex-1 text-center font-mono text-[9px] uppercase tracking-[0.18em] text-muted sm:block">
-            <span className="text-muted-2">← →</span> previous / next
-          </p>
-        )}
+      <div className="relative z-30 hidden shrink-0 items-center justify-end gap-4 px-3 py-2 landscape:flex lg:px-6 lg:py-4 lg:flex">
         <div className="flex shrink-0 items-center gap-0.5">
           <div className="flex items-center">
             <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
@@ -818,7 +809,7 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint] flex items-center justify-center p-2 lg:p-8 max-lg:landscape:p-1"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint] flex items-center justify-center p-2 lg:p-8 max-lg:landscape:p-3"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
