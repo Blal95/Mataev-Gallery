@@ -307,14 +307,12 @@ export function PhotoDetail({
     return () => { meta.content = original }
   }, [])
 
-  // Desktop browsers ignore the viewport meta tag entirely, and there is no
-  // JS API to reset trackpad pinch zoom (window.visualViewport is read-only).
-  // Instead, counter-transform the detail view: translate it to the visual
-  // viewport's origin and scale it by 1/scale, so it renders at apparent
-  // scale 1 and fills the screen regardless of any lingering pinch zoom.
-  // The element's CSS size equals the layout viewport, so after scaling by
-  // 1/scale its footprint exactly matches the visible region.
-  // Cleared on close so the gallery keeps the user's zoom level.
+  // Counter-transform the detail view: translate it to the visual viewport's
+  // origin and scale it by 1/scale, so it renders at apparent scale 1 and
+  // fills the screen regardless of any lingering pinch zoom. The element's
+  // CSS size equals the layout viewport, so after scaling by 1/scale its
+  // footprint exactly matches the visible region. Cleared on close so the
+  // gallery keeps the user's zoom level.
   useLayoutEffect(() => {
     const vv = window.visualViewport
     const el = rootRef.current
@@ -636,7 +634,7 @@ export function PhotoDetail({
       : "none"
 
   return (
-    <div ref={rootRef} className="flex h-full w-full overflow-hidden bg-bg">
+    <div ref={rootRef} className="flex h-[100dvh] w-full overflow-hidden bg-bg max-lg:landscape:h-[100dvh]">
       {/* Progress bar */}
       <div
         aria-hidden
@@ -644,8 +642,8 @@ export function PhotoDetail({
         style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
       />
 
-      {/* Sidebar — landscape phones (160px) and desktop (340px) */}
-      <aside className="relative z-30 hidden w-[160px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex">
+    {/* Sidebar — landscape phones (300px) and desktop (340px) */}
+      <aside className="relative z-30 hidden w-[300px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full max-lg:landscape:h-full">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-3 lg:px-6 lg:pb-8 lg:pt-6">
           {/* Frame counter */}
           <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:mb-6 lg:text-[10px] lg:tracking-[0.28em]">
@@ -820,15 +818,13 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint]"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint] flex items-center justify-center p-2 lg:p-8 max-lg:landscape:p-1"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-0 lg:inset-y-6 lg:inset-x-14">
-          {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
-              footprint so the blur never bleeds into the letterbox areas */}
+        <div className="relative flex items-center justify-center w-full h-full max-lg:landscape:max-h-full max-h-full">
           {isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
@@ -844,7 +840,7 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto absolute inset-0 h-full w-full cursor-pointer object-contain ${transitioning ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto max-w-full max-h-full w-auto h-auto object-contain cursor-pointer transition-all ${transitioning ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           ) : (
@@ -856,7 +852,7 @@ export function PhotoDetail({
               decoding="async"
               fetchPriority="high"
               onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
-              className={`pointer-events-auto absolute inset-0 h-full w-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+              className={`pointer-events-auto max-w-full max-h-full w-auto h-auto object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           )}
