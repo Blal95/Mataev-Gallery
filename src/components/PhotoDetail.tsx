@@ -136,7 +136,12 @@ export function PhotoDetail({
   const touchStartY = useRef<number | null>(null)
   const placeholder = thumbhashToUrl(photo.thumbhash)
 
+  const hasTriedFullscreen = useRef(false)
+
   const close = () => {
+    if (typeof document !== "undefined" && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    }
     if (asModal) router.back()
     else router.push("/")
   }
@@ -155,6 +160,10 @@ export function PhotoDetail({
   }
 
   const onTouchStart = (e: React.TouchEvent) => {
+    if (!hasTriedFullscreen.current && typeof document !== "undefined" && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      hasTriedFullscreen.current = true
+      document.documentElement.requestFullscreen({ navigationUI: "hide" }).catch(() => {})
+    }
     if (e.touches.length === 2) {
       const dx = e.touches[1].clientX - e.touches[0].clientX
       const dy = e.touches[1].clientY - e.touches[0].clientY
@@ -623,7 +632,7 @@ export function PhotoDetail({
       : "none"
 
   return (
-    <div ref={rootRef} className="flex h-[100dvh] w-full overflow-hidden bg-bg max-lg:landscape:h-[100dvh]">
+    <div ref={rootRef} className="flex h-[100dvh] w-full overflow-hidden bg-bg" style={{ paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" }}>
       {/* Progress bar */}
       <div
         aria-hidden
@@ -761,23 +770,35 @@ export function PhotoDetail({
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+          {photo.views > 0 && <span className="text-muted"> · {photo.views.toLocaleString()} views</span>}
         </span>
         <button onClick={close} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
           <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
         </button>
       </div>
 
-      {/* Landscape + desktop in-flow header */}
-      <div className="relative z-30 hidden shrink-0 items-center justify-end gap-4 px-3 py-2 landscape:flex lg:px-6 lg:py-4 lg:flex">
+      {/* Landscape phone — absolute overlay so stage gets full height */}
+      <div className="absolute right-0 top-0 z-40 hidden items-center gap-0.5 px-1 py-0.5 max-lg:landscape:flex">
+        <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
+          <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
+        </button>
+        <button onClick={() => next && goto(next.slug, 'left')} disabled={!next} aria-label="Next frame" className={hdrBtn}>
+          <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
+        </button>
+        <button onClick={close} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
+          <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+
+      {/* Desktop in-flow header */}
+      <div className="relative z-30 hidden shrink-0 items-center justify-end gap-4 px-6 py-4 lg:flex">
         <div className="flex shrink-0 items-center gap-0.5">
-          <div className="flex items-center">
-            <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
-              <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
-            </button>
-            <button onClick={() => next && goto(next.slug, 'left')} disabled={!next} aria-label="Next frame" className={hdrBtn}>
-              <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
-            </button>
-          </div>
+          <button onClick={() => prev && goto(prev.slug, 'right')} disabled={!prev} aria-label="Previous frame" className={hdrBtn}>
+            <Icon d="M15 18l-6-6 6-6" className="h-5 w-5" />
+          </button>
+          <button onClick={() => next && goto(next.slug, 'left')} disabled={!next} aria-label="Next frame" className={hdrBtn}>
+            <Icon d="M9 18l6-6-6-6" className="h-5 w-5" />
+          </button>
           <button onClick={close} aria-label="Close" className="inline-flex h-11 w-11 items-center justify-center text-muted-2 transition-colors hover:text-text">
             <Icon d="M18 6L6 18M6 6l12 12" className="h-[18px] w-[18px]" />
           </button>
