@@ -143,7 +143,7 @@ export function PhotoDetail({
 
   // Info sheet only exists below lg — desktop has the permanent sidebar
   const toggleInfo = () => {
-    if (typeof window !== "undefined" && window.innerWidth >= 1024) return
+    if (typeof window !== "undefined" && (window.innerWidth >= 1024 || window.matchMedia("(orientation: landscape)").matches)) return
     setInfo((v) => !v)
   }
 
@@ -205,9 +205,12 @@ export function PhotoDetail({
     // Swipe nav only when not zoomed (panning owns the gesture while zoomed)
     if (zoomRef.current > 1) return
 
-    // Vertical swipe — open/close info sheet on mobile (portrait + landscape)
+    // Vertical swipe — open/close info sheet on portrait mobile only
     if (Math.abs(dy) > Math.abs(dx)) {
-      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      const isPortraitMobile = typeof window !== "undefined"
+        && window.innerWidth < 1024
+        && !window.matchMedia("(orientation: landscape)").matches
+      if (isPortraitMobile) {
         if (dy < -50 && !info) { setInfo(true); return }
         if (dy > 50 && info) { setInfo(false); return }
       }
@@ -259,7 +262,7 @@ export function PhotoDetail({
       if (e.key === "Escape") { if (info) setInfo(false); else close() }
       if (e.key === "ArrowLeft" && prev) goto(prev.slug, 'right')
       if (e.key === "ArrowRight" && next) goto(next.slug, 'left')
-      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024) setInfo((v) => !v)
+      if ((e.key === "i" || e.key === "I") && window.innerWidth < 1024 && !window.matchMedia("(orientation: landscape)").matches) setInfo((v) => !v)
       if (e.key === " " && isVideo) { e.preventDefault(); togglePlayback() }
       if ((e.key === "m" || e.key === "M") && isVideo) setIsMuted((v) => !v)
       if (e.key === "+" || e.key === "=") zoomAt(window.innerWidth / 2, window.innerHeight / 2, Math.min(5, zoomRef.current * 1.4), true)
@@ -641,11 +644,11 @@ export function PhotoDetail({
         style={{ transitionDuration: transitioning ? "1200ms" : "150ms" }}
       />
 
-      {/* Desktop sidebar — always visible on lg+, all metadata lives here */}
-      <aside className="relative z-30 hidden w-[340px] shrink-0 flex-col border-r border-line bg-bg-2/50 lg:flex">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-8 pt-6 max-lg:landscape:px-4 max-lg:landscape:pt-3 max-lg:landscape:pb-4">
+      {/* Sidebar — landscape phones (160px) and desktop (340px) */}
+      <aside className="relative z-30 hidden w-[160px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-3 lg:px-6 lg:pb-8 lg:pt-6">
           {/* Frame counter */}
-          <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.28em] text-amber max-lg:landscape:mb-3">
+          <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:mb-6 lg:text-[10px] lg:tracking-[0.28em]">
             Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
             <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
           </p>
@@ -655,9 +658,9 @@ export function PhotoDetail({
 
           {/* Caption — primary read */}
           {photo.caption && (
-            <div className="mb-6 max-lg:landscape:mb-3">
-              <p className="mb-2 font-mono text-[8.5px] uppercase tracking-[0.24em] text-muted/60">Caption</p>
-              <p className="font-serif text-[23px] italic leading-[1.35] tracking-[-0.01em] text-text max-lg:landscape:text-[17px]">
+            <div className="mb-3 lg:mb-6">
+              <p className="mb-1.5 font-mono text-[8px] uppercase tracking-[0.2em] text-muted/60 lg:mb-2 lg:text-[8.5px] lg:tracking-[0.24em]">Caption</p>
+              <p className="font-serif text-[15px] italic leading-[1.35] tracking-[-0.01em] text-text lg:text-[23px]">
                 {photo.caption}
               </p>
             </div>
@@ -665,8 +668,8 @@ export function PhotoDetail({
 
           {/* When */}
           {date && (
-            <Section label="When" className="mb-5 max-lg:landscape:mb-3">
-              <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-text/90">
+            <Section label="When" className="mb-3 lg:mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-text/90 lg:text-[11px] lg:tracking-[0.12em]">
                 {date}{time ? <span className="text-muted-2"> · {time}</span> : null}
               </p>
             </Section>
@@ -674,7 +677,7 @@ export function PhotoDetail({
 
           {/* Where */}
           {(locationLine || coords) && (
-            <Section label="Where" className="mb-5 max-lg:landscape:mb-3">
+            <Section label="Where" className="mb-3 lg:mb-5">
               {locationLine && (
                 <a
                   href={photo.lat != null && photo.lon != null
@@ -691,19 +694,19 @@ export function PhotoDetail({
                 </a>
               )}
               {photo.lat != null && photo.lon != null && (
-                <div className="mt-3 overflow-hidden rounded-lg border border-line-2 max-lg:landscape:hidden">
+                <div className="mt-3 overflow-hidden rounded-lg border border-line-2 landscape:hidden">
                   <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" label={isInChechnya(photo.lat, photo.lon) ? "Chechnya" : undefined} />
                 </div>
               )}
               {coords && (
-                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60 max-lg:landscape:hidden">{coords}</p>
+                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60 landscape:hidden">{coords}</p>
               )}
             </Section>
           )}
 
           {/* Camera */}
           {!isVideo && (photo.camera || photo.lens || cameraSpecs.length > 0) && (
-            <Section label="Camera" className="mb-5 max-lg:landscape:hidden">
+            <Section label="Camera" className="mb-3 landscape:hidden lg:mb-5 lg:block">
               {photo.camera && (
                 <p className="font-mono text-[11px] uppercase leading-snug tracking-[0.08em] text-text/90">{photo.camera}</p>
               )}
@@ -720,7 +723,7 @@ export function PhotoDetail({
 
           {/* File */}
           {fileSpecs.length > 0 && (
-            <Section label="File" className="mb-5 max-lg:landscape:hidden">
+            <Section label="File" className="mb-3 landscape:hidden lg:mb-5 lg:block">
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
               </div>
@@ -729,7 +732,7 @@ export function PhotoDetail({
 
           {/* Tags */}
           {photo.tags.length > 0 && (
-            <Section label="Tags" className="mb-5">
+            <Section label="Tags" className="mb-3 landscape:hidden lg:mb-5 lg:block">
               <div className="flex flex-wrap gap-1.5">
                 {photo.tags.map((t) => (
                   <Link
@@ -745,7 +748,7 @@ export function PhotoDetail({
           )}
 
           {/* Full size + comments */}
-          <div className="flex items-center justify-between gap-4 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-4 border-t border-line pt-4 landscape:hidden lg:flex">
             <a
               href={photo.url.original}
               target="_blank"
@@ -776,8 +779,8 @@ export function PhotoDetail({
       <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
 
       {/* Portrait: floating gradient + controls overlay — zero in-flow height, photo gets full stage */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent lg:hidden" />
-      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden backdrop-blur-md bg-bg/85">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-40 h-28 bg-gradient-to-b from-bg/80 to-transparent landscape:hidden lg:hidden" />
+      <div className="absolute left-0 right-0 top-0 z-50 flex items-start justify-between px-3 pt-[max(0.625rem,env(safe-area-inset-top))] landscape:hidden lg:hidden backdrop-blur-md bg-bg/85">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber drop-shadow-sm">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -787,8 +790,8 @@ export function PhotoDetail({
         </button>
       </div>
 
-      {/* Desktop in-flow header — lg only */}
-      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-6 py-4 lg:flex">
+      {/* Landscape + desktop in-flow header */}
+      <div className="relative z-30 hidden shrink-0 items-center justify-between gap-4 px-3 py-2 landscape:flex lg:px-6 lg:py-4 lg:flex">
         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.28em] text-amber invisible">
           Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
           <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
@@ -823,7 +826,7 @@ export function PhotoDetail({
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="pointer-events-none absolute inset-y-0 lg:inset-y-6 inset-x-2 lg:inset-x-14">
+        <div className="pointer-events-none absolute inset-0 lg:inset-y-6 lg:inset-x-14">
           {/* Thumbhash blur placeholder — wrapper sized to the photo's actual rendered
               footprint so the blur never bleeds into the letterbox areas */}
           {isVideo ? (
@@ -911,7 +914,7 @@ export function PhotoDetail({
           Replaces the old caption strip + header INFO button. */}
       <div
         ref={bottomBarRef}
-        className="relative z-[60] flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="relative z-[60] flex shrink-0 items-center border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] landscape:hidden lg:hidden"
       >
         <button
           onClick={() => prev && goto(prev.slug, 'right')}
@@ -954,14 +957,14 @@ export function PhotoDetail({
 
       {/* Spacer that grows in sync with the info panel so the stage shrinks
           and the photo remains fully visible when details are open */}
-      <div ref={spacerRef} className="shrink-0 lg:hidden" style={{ height: 0 }} />
+      <div ref={spacerRef} className="shrink-0 landscape:hidden lg:hidden" style={{ height: 0 }} />
 
       {/* Info sheet — absolute bottom sheet, slides up over the action bar.
           GPU-composited translateY animation; real-time drag via native listeners above. */}
       <div
         ref={infoRef}
         aria-hidden={!info}
-        className={`absolute inset-x-0 bottom-0 z-50 lg:hidden ${info ? "" : "pointer-events-none"}`}
+        className={`absolute inset-x-0 bottom-0 z-50 landscape:hidden lg:hidden ${info ? "" : "pointer-events-none"}`}
         style={{ transform: "translateY(100%)" }}
       >
         {/* Drag handle — touch listeners live here, not on the panel, so scrollable content stays native */}
