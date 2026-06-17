@@ -589,23 +589,12 @@ export function PhotoDetail({
   const time = takenDate
     ? takenDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : null
-  const coords = photo.lat != null && photo.lon != null
-    ? `${photo.lat.toFixed(5)}, ${photo.lon.toFixed(5)}`
-    : null
-
   const cameraSpecs = [
+    { label: "Duration", value: isVideo ? formatDuration(photo.duration) : null },
     { label: "Focal", value: formatFocal(photo.focal) },
     { label: "Aperture", value: formatAperture(photo.fNumber) },
     { label: "Shutter", value: formatExposure(photo.exposure) },
     { label: "ISO", value: photo.iso != null ? String(photo.iso) : null },
-  ].filter((s): s is { label: string; value: string } => s.value != null)
-
-  const fileSpecs = [
-    { label: "Duration", value: isVideo ? formatDuration(photo.duration) : null },
-    { label: "Size", value: photo.width > 0 ? `${photo.width} × ${photo.height}` : null },
-    { label: "Format", value: photo.format ? photo.format.toUpperCase() : null },
-    { label: "Weight", value: formatBytes(photo.bytes) },
-    { label: "Views", value: photo.views > 0 ? photo.views.toLocaleString() : null },
   ].filter((s): s is { label: string; value: string } => s.value != null)
 
   const flag = flagEmoji(photo.countryCode, photo.lat, photo.lon)
@@ -643,12 +632,13 @@ export function PhotoDetail({
       />
 
     {/* Sidebar — landscape phones (200px) and desktop (340px) */}
-      <aside className="relative z-30 hidden w-[200px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full">
+      <aside className="relative z-30 hidden w-[200px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full overflow-x-hidden">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2.5 lg:px-6 lg:pb-8 lg:pt-6">
           {/* Frame counter */}
           <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:mb-6 lg:text-[10px] lg:tracking-[0.28em]">
             Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
             <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+            {photo.views > 0 && <span className="text-muted"> · {photo.views.toLocaleString()} views</span>}
           </p>
 
           {/* Metadata — fades when navigating between photos */}
@@ -674,7 +664,7 @@ export function PhotoDetail({
           )}
 
           {/* Where */}
-          {(locationLine || coords) && (
+          {locationLine && (
             <Section label="Where" className="mb-3 lg:mb-5">
               {locationLine && (
                 <a
@@ -692,12 +682,9 @@ export function PhotoDetail({
                 </a>
               )}
               {photo.lat != null && photo.lon != null && (
-                <div className="mt-3 overflow-hidden rounded-lg border border-line-2 landscape:hidden">
-                  <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 w-full" label={isInChechnya(photo.lat, photo.lon) ? "Chechnya" : undefined} />
+                <div className="mt-3 overflow-hidden rounded-lg border border-line-2">
+                  <LocationMap lat={photo.lat} lon={photo.lon} zoom={8} className="h-44 max-lg:landscape:h-28 w-full" label={isInChechnya(photo.lat, photo.lon) ? "Chechnya" : undefined} />
                 </div>
-              )}
-              {coords && (
-                <p className="mt-2 font-mono text-[9px] tabular-nums tracking-[0.08em] text-muted/60 landscape:hidden">{coords}</p>
               )}
             </Section>
           )}
@@ -719,14 +706,6 @@ export function PhotoDetail({
             </Section>
           )}
 
-          {/* File */}
-          {fileSpecs.length > 0 && (
-            <Section label="File" className="mb-3 lg:mb-5">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
-              </div>
-            </Section>
-          )}
 
           {/* Tags */}
           {photo.tags.length > 0 && (
@@ -809,13 +788,14 @@ export function PhotoDetail({
           so the info sheet below shrinks the image instead of covering it */}
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint] flex items-center justify-center p-2 lg:p-8 max-lg:landscape:p-3"
+        className="relative min-h-0 flex-1 touch-none select-none overflow-hidden [clip-path:inset(0)] [contain:paint]"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
         onDoubleClick={onDoubleClick}
       >
-        <div className="relative flex items-center justify-center w-full h-full max-lg:landscape:max-h-full max-h-full">
+        {/* Absolute fill — bypasses iOS Safari h-full flex-child collapse bug */}
+        <div className="absolute inset-0 flex items-center justify-center p-3 max-lg:landscape:p-2 lg:p-8">
           {isVideo ? (
             // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
@@ -831,7 +811,7 @@ export function PhotoDetail({
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
               onClick={togglePlayback}
-              className={`pointer-events-auto max-w-full max-h-full w-auto h-auto object-contain cursor-pointer transition-all ${transitioning ? "opacity-0" : "opacity-100"}`}
+              className={`max-w-full max-h-full w-auto h-auto object-contain cursor-pointer pointer-events-auto ${transitioning ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           ) : (
@@ -843,7 +823,7 @@ export function PhotoDetail({
               decoding="async"
               fetchPriority="high"
               onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
-              className={`pointer-events-auto max-w-full max-h-full w-auto h-auto object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+              className={`max-w-full max-h-full w-auto h-auto object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] pointer-events-auto ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
               style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
             />
           )}
@@ -1017,14 +997,6 @@ export function PhotoDetail({
                 </Section>
               )}
 
-              {/* File */}
-              {fileSpecs.length > 0 && (
-                <Section label="File" className="mb-5">
-                  <div className="grid grid-cols-4 gap-x-3 gap-y-3 max-[420px]:grid-cols-2">
-                    {fileSpecs.map((s) => <SpecCell key={s.label} label={s.label} value={s.value} />)}
-                  </div>
-                </Section>
-              )}
 
               {/* Tags */}
               {photo.tags.length > 0 && (
