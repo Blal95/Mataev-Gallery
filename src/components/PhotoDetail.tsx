@@ -842,7 +842,7 @@ export function PhotoDetail({
             decoding="async"
             fetchPriority="high"
             onLoad={() => { setTransitioning(false); setLargeLoaded(true); setSwipeDir(null); setContentVisible(true) }}
-            className={`absolute inset-0 w-full h-full object-contain [filter:drop-shadow(0_8px_28px_rgba(0,0,0,0.85))] ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
+            className={`absolute inset-0 w-full h-full object-contain ${zoom > 1 ? "cursor-grab" : "cursor-zoom-in"} ${transitioning || !largeLoaded ? "opacity-0" : "opacity-100"}`}
             style={{ transform: imgTransform, transition: imgTransition, transformOrigin: "center center" }}
           />
         )}
