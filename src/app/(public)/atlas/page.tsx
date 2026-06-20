@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Link from "next/link"
 import { db } from "@/lib/db"
 import { cdnBase } from "@/lib/env"
 import { listGeoPhotos } from "@/lib/photos"
@@ -40,10 +41,19 @@ export default async function AtlasPage({ searchParams }: { searchParams: Promis
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
       <NoScroll />
-      <div className="flex items-baseline justify-between gap-4 border-b border-line px-4 py-4 sm:px-6">
-        <h1 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text">
-          <span className="text-amber">▸</span> Atlas
-        </h1>
+      <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="font-mono text-[13px] text-muted transition-colors hover:text-amber"
+            aria-label="Back to gallery"
+          >
+            ←
+          </Link>
+          <h1 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text">
+            <span className="text-amber">▸</span> Atlas
+          </h1>
+        </div>
         <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted">
           {pins.length} {pins.length === 1 ? "frame" : "frames"}
           {countries > 0 && ` · ${countries} ${countries === 1 ? "country" : "countries"}`}
