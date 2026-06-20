@@ -107,9 +107,14 @@ button:focus-visible {
   transform: translateZ(0);
 }
 
-/* Tiles fade in instead of popping. 0.15s is fast enough to not feel laggy. */
+/* Tiles fade in instead of popping. */
 .leaflet-tile { opacity: 0; transition: opacity 0.15s ease; }
 .leaflet-tile-loaded { opacity: 1; }
+
+/* Leaflet's default zoom animation is 0.25s — speed it up so zoom feels instant. */
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition: transform 0.12s cubic-bezier(0.1, 0, 0.25, 1) !important;
+}
 
 /* Attribution — tiny, flush right, matches palette. */
 .leaflet-control-attribution {
