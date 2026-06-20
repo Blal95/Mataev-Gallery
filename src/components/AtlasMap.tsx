@@ -65,8 +65,11 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         preferCanvas: true,
         maxBounds: [[-85.051129, -180000], [85.051129, 180000]],
         maxBoundsViscosity: 1.0,
-        zoomSnap: 0.25,
+        zoomSnap: 0,               // continuous zoom — no snapping during pinch
+        zoomDelta: 1,              // +/- buttons still jump a full level
         wheelPxPerZoomLevel: 80,
+        inertiaDeceleration: 2000, // glide a bit longer after finger lift
+        inertiaMaxSpeed: 2500,
       })
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
