@@ -65,6 +65,8 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         preferCanvas: true,
         maxBounds: [[-85.051129, -180000], [85.051129, 180000]],
         maxBoundsViscosity: 1.0,
+        zoomSnap: 0.25,
+        wheelPxPerZoomLevel: 80,
       })
 
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
@@ -72,7 +74,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         maxZoom: 19,
         minZoom: 2,
         updateWhenZooming: false,
-        keepBuffer: 3,
+        keepBuffer: 4,
       }).addTo(map)
 
       // Custom border: Chechnya drawn as its own country, extended to include

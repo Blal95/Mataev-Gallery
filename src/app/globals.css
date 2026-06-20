@@ -76,14 +76,17 @@ button:focus-visible {
   background: #110e0a;
 }
 
-/* No grayscale — preserves CARTO's water/land colour differentiation so
-   lakes, rivers and seas read as subtly cooler-toned than land.
-   saturate(0.5) tones down the blue without eliminating it; sepia(0.25)
-   adds just enough warmth to land areas; contrast(1.2) sharpens the
-   water/terrain boundary. Amber stays reserved for markers.
-   will-change promotes each tile to its own compositor layer. */
-.leaflet-container .leaflet-tile {
+/* Apply colour grading at the pane level instead of per-tile.
+   One compositor layer vs hundreds — eliminates white seams and squares
+   that appear between tiles during zoom when each tile carries its own
+   filter (which forces a new stacking context per tile). */
+.leaflet-tile-pane {
   filter: brightness(0.95) contrast(1.05) saturate(0.65) sepia(0.18);
+  background: #110e0a;
+}
+
+/* Individual tiles only need GPU promotion, no filter. */
+.leaflet-container .leaflet-tile {
   will-change: transform;
 }
 
