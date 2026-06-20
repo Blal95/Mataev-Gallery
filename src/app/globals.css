@@ -74,32 +74,41 @@ button:focus-visible {
   z-index: 0;
   isolation: isolate;
   background: #110e0a;
+  contain: layout;
 }
 
-/* Apply colour grading at the pane level instead of per-tile.
-   One compositor layer vs hundreds — eliminates white seams and squares
-   that appear between tiles during zoom when each tile carries its own
-   filter (which forces a new stacking context per tile). */
+/* Colour grading on the pane (one GPU layer, not one per tile).
+   Promoted to its own compositor layer so pan/zoom never triggers
+   a filter recalculation on the main thread. */
 .leaflet-tile-pane {
   filter: brightness(0.95) contrast(1.05) saturate(0.65) sepia(0.18);
   background: #110e0a;
-}
-
-/* Individual tiles only need GPU promotion, no filter. */
-.leaflet-container .leaflet-tile {
   will-change: transform;
+  transform: translateZ(0);
 }
 
-/* Force the map container onto the GPU — eliminates the stutter on first
-   pan after page load when the compositor layer hasn't been created yet. */
+/* Tiles sit inside the already-promoted pane — no per-tile GPU layer needed. */
+.leaflet-container .leaflet-tile {
+  image-rendering: auto;
+}
+
+/* Map pane on GPU — pan moves the compositor layer, not the DOM. */
 .leaflet-map-pane {
   will-change: transform;
   transform: translateZ(0);
 }
 
-/* Tiles fade in instead of popping — Leaflet sets .leaflet-tile-loaded when
-   the image fires onload; we animate opacity from 0. */
-.leaflet-tile { opacity: 0; transition: opacity 0.25s ease; }
+/* Tile shadow pane (used during zoom transitions) also needs GPU. */
+.leaflet-shadow-pane,
+.leaflet-overlay-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  transform: translateZ(0);
+}
+
+/* Tiles fade in instead of popping. 0.15s is fast enough to not feel laggy. */
+.leaflet-tile { opacity: 0; transition: opacity 0.15s ease; }
 .leaflet-tile-loaded { opacity: 1; }
 
 /* Attribution — tiny, flush right, matches palette. */
