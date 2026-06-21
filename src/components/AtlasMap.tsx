@@ -73,7 +73,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         inertiaMaxSpeed: 2500,
       })
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         subdomains: "abcd",
         maxZoom: 19,
         minZoom: 2,
@@ -304,6 +304,48 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         map.fitBounds(homeBounds, { maxZoom: 8 })
       } else {
         map.setView([55, 30], 3)
+      }
+
+      // Warm the browser cache with the whole tile pyramid for the pin region,
+      // zoom 2→9. Without this, every new zoom level is a cold CARTO CDN fetch —
+      // tiles only arrive *after* the zoom lands, so you watch them paint in.
+      // Pre-fetching off-screen Image()s populates the HTTP cache, so when
+      // Leaflet later requests the same URL on zoom it's an instant cache hit
+      // and the map feels like it was always fully loaded. Tiles are tiny dark
+      // PNGs (~2–4 KB); the region is small, so the whole pyramid is well under
+      // a megabyte. Runs idle so it never competes with the visible tiles.
+      const warmBounds = homeBounds ?? (center ? L.latLngBounds(center, center).pad(2) : null)
+      if (warmBounds) {
+        const lat2tileY = (lat: number, z: number) =>
+          Math.floor(
+            ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) *
+              2 ** z,
+          )
+        const lon2tileX = (lon: number, z: number) => Math.floor(((lon + 180) / 360) * 2 ** z)
+        const warm = () => {
+          let queued = 0
+          const MAX = 900 // hard cap so a wide region can't flood the network
+          for (let z = 2; z <= 9 && queued < MAX; z++) {
+            const n = 2 ** z
+            const clamp = (v: number) => Math.max(0, Math.min(n - 1, v))
+            const x0 = clamp(lon2tileX(warmBounds.getWest(), z))
+            const x1 = clamp(lon2tileX(warmBounds.getEast(), z))
+            const y0 = clamp(lat2tileY(warmBounds.getNorth(), z))
+            const y1 = clamp(lat2tileY(warmBounds.getSouth(), z))
+            for (let x = x0; x <= x1 && queued < MAX; x++) {
+              for (let y = y0; y <= y1 && queued < MAX; y++) {
+                const coords = new L.Point(x, y) as import("leaflet").Coords
+                coords.z = z
+                const img = new Image()
+                img.src = tiles.getTileUrl(coords)
+                queued++
+              }
+            }
+          }
+        }
+        const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
+        if (ric) ric(warm)
+        else setTimeout(warm, 600)
       }
 
       // Home button — flies back to fit-all-pins view.

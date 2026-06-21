@@ -116,12 +116,11 @@ button:focus-visible {
   transform: translateZ(0);
 }
 
-/* Tiles fade in instead of popping. */
-.leaflet-tile { opacity: 0; transition: opacity 0.12s ease; }
+/* Tiles appear instantly — no fade. Leaflet removes old zoom-level tiles the
+   moment new ones are "loaded", so any opacity transition creates a dark flash
+   while the new tiles animate in. Instant appearance eliminates that gap. */
+.leaflet-tile { opacity: 0; }
 .leaflet-tile-loaded { opacity: 1; }
-/* During zoom animation don't fade — loaded tiles stay visible, unloaded
-   tiles are hidden (opacity:0) revealing the dark tile-container bg. */
-.leaflet-zoom-anim .leaflet-tile-loaded { transition: none !important; }
 
 /* Leaflet's default zoom animation is 0.25s — speed it up so zoom feels instant. */
 .leaflet-zoom-anim .leaflet-zoom-animated {
