@@ -73,7 +73,7 @@ button:focus-visible {
   position: relative;
   z-index: 0;
   isolation: isolate;
-  background: #110e0a;
+  background: #110e0a !important;
   contain: layout;
 }
 
@@ -89,9 +89,16 @@ button:focus-visible {
   background: #110e0a;
 }
 
-/* Tiles sit inside the already-promoted pane — no per-tile GPU layer needed. */
+/* Dark fill behind all tiles — loading gaps show dark, never white. */
+.leaflet-tile-container {
+  background: #110e0a;
+}
+
+/* Tiles sit inside the already-promoted pane — no per-tile GPU layer needed.
+   Negative margin closes the 1-px subpixel gaps between adjacent tiles. */
 .leaflet-container .leaflet-tile {
   image-rendering: auto;
+  margin: -1px !important;
 }
 
 /* Map pane on GPU — pan moves the compositor layer, not the DOM. */
@@ -110,8 +117,11 @@ button:focus-visible {
 }
 
 /* Tiles fade in instead of popping. */
-.leaflet-tile { opacity: 0; transition: opacity 0.15s ease; }
+.leaflet-tile { opacity: 0; transition: opacity 0.12s ease; }
 .leaflet-tile-loaded { opacity: 1; }
+/* During zoom animation don't fade — loaded tiles stay visible, unloaded
+   tiles are hidden (opacity:0) revealing the dark tile-container bg. */
+.leaflet-zoom-anim .leaflet-tile-loaded { transition: none !important; }
 
 /* Leaflet's default zoom animation is 0.25s — speed it up so zoom feels instant. */
 .leaflet-zoom-anim .leaflet-zoom-animated {

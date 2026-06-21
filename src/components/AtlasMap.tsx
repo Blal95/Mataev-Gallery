@@ -78,7 +78,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         maxZoom: 19,
         minZoom: 2,
         updateWhenZooming: false,
-        keepBuffer: 4,
+        keepBuffer: 6,
       }).addTo(map)
 
       // Custom border: Chechnya drawn as its own country, extended to include
