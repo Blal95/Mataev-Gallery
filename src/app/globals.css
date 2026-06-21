@@ -77,14 +77,16 @@ button:focus-visible {
   contain: layout;
 }
 
-/* Colour grading on the pane (one GPU layer, not one per tile).
-   Promoted to its own compositor layer so pan/zoom never triggers
-   a filter recalculation on the main thread. */
+/* Colour grading on the tile pane only (not per-tile).
+   No will-change here — the tile pane must NOT get its own GPU compositor
+   layer. During zoom Leaflet creates a second tile container inside this
+   pane; if the pane is a separate layer the filter gets composited at
+   different stages for old vs new tiles, producing the two-tone grey/dark
+   artifact. Rendering inside .leaflet-map-pane's existing GPU layer keeps
+   the filter consistent for every tile at every moment. */
 .leaflet-tile-pane {
   filter: brightness(0.95) contrast(1.05) saturate(0.65) sepia(0.18);
   background: #110e0a;
-  will-change: transform;
-  transform: translateZ(0);
 }
 
 /* Tiles sit inside the already-promoted pane — no per-tile GPU layer needed. */
