@@ -73,12 +73,33 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         inertiaMaxSpeed: 2500,
       })
 
-      const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      const TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+
+      // Backdrop layer — a coarse, always-present base pinned to a low native
+      // zoom (z6). Because its tile zoom is capped, it does NOT re-fetch or get
+      // pruned when the detail zoom changes; Leaflet just transform-scales its
+      // handful of (cached) tiles to fill behind the detail layer. So zooming
+      // out never exposes the dark container at the periphery — you see soft map
+      // there while the crisp detail tiles stream in on top. zIndex keeps it
+      // under the detail layer. It lives in the same .leaflet-tile-pane, so the
+      // colour-grade filter applies to both layers identically (no two-tone).
+      L.tileLayer(TILE_URL, {
+        subdomains: "abcd",
+        minZoom: 2,
+        maxZoom: 19,
+        maxNativeZoom: 6,
+        keepBuffer: 8,
+        updateWhenZooming: true,
+        zIndex: 1,
+      }).addTo(map)
+
+      const tiles = L.tileLayer(TILE_URL, {
         subdomains: "abcd",
         maxZoom: 19,
         minZoom: 2,
-        updateWhenZooming: false,
-        keepBuffer: 6,
+        updateWhenZooming: true,   // fetch the new level DURING the zoom anim —
+        keepBuffer: 6,             // instant from the warmed cache, so detail
+        zIndex: 2,                 // resolves without a post-zoom dark flash
       }).addTo(map)
 
       // Custom border: Chechnya drawn as its own country, extended to include

@@ -86,13 +86,13 @@ button:focus-visible {
    the filter consistent for every tile at every moment. */
 .leaflet-tile-pane {
   filter: brightness(0.95) contrast(1.05) saturate(0.65) sepia(0.18);
-  background: #110e0a;
 }
 
-/* Dark fill behind all tiles — loading gaps show dark, never white. */
-.leaflet-tile-container {
-  background: #110e0a;
-}
+/* NOTE: no dark background on the tile pane / tile container. The backdrop
+   tile layer (pinned low-zoom, never pruned) sits behind the detail layer and
+   fills any gap during zoom, so a loading detail tile reveals soft map — not a
+   dark square. The only dark fallback is .leaflet-container, seen solely where
+   no tile exists at all (true ocean / off-world). */
 
 /* Tiles sit inside the already-promoted pane — no per-tile GPU layer needed.
    Negative margin closes the 1-px subpixel gaps between adjacent tiles. */
