@@ -667,7 +667,7 @@ export function PhotoDetail({
               <button
                 onClick={() => setEditing((v) => !v)}
                 aria-label={editing ? "Cancel edit" : "Edit photo"}
-                className="shrink-0 text-muted transition-colors hover:text-amber"
+                className="shrink-0 -m-2 p-2 text-muted transition-colors hover:text-amber"
               >
                 <Icon d={editing ? "M6 18L18 6M6 6l12 12" : "M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"} className="h-3.5 w-3.5" />
               </button>
@@ -989,7 +989,7 @@ export function PhotoDetail({
             <button
               onClick={() => setEditing((v) => !v)}
               aria-label={editing ? "Cancel edit" : "Edit photo"}
-              className="absolute right-4 top-2 text-muted transition-colors hover:text-amber"
+              className="absolute right-2 top-0 p-3 text-muted transition-colors hover:text-amber"
             >
               <Icon d={editing ? "M6 18L18 6M6 6l12 12" : "M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"} className="h-3.5 w-3.5" />
             </button>

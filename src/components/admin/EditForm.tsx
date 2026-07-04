@@ -64,25 +64,25 @@ export function EditForm({ photo, onSaved, onDeleted }: { photo: PhotoDTO; onSav
       <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption" className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 text-sm text-text outline-none focus:border-cyan/50" />
       <input value={tags} onChange={(e) => setTags(e.target.value)} className="w-full rounded border border-line-2 bg-bg-2 px-2 py-1.5 font-mono text-xs text-text outline-none focus:border-cyan/50" />
       <LocationPicker value={location} onChange={setLocation} />
+      <div className="flex flex-wrap gap-1.5 rounded border border-line overflow-hidden">
+        {([
+          [0, "Draft", "border-amber/40 bg-amber/10 text-amber"],
+          [1, "Public", "border-cyan/40 bg-cyan/10 text-cyan"],
+          [2, "Tag only", "border-line-2 bg-bg-2 text-text"],
+        ] as const).map(([v, label, activeClass]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setVisibility(v)}
+            className={`flex-1 px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors border-r last:border-r-0 border-line ${visibility === v ? activeClass : "text-muted hover:text-text"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="flex items-center gap-2">
-        <button onClick={save} disabled={busy} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">Save</button>
-        <div className="flex rounded border border-line overflow-hidden">
-          {([
-            [0, "Draft", "border-amber/40 bg-amber/10 text-amber"],
-            [1, "Public", "border-cyan/40 bg-cyan/10 text-cyan"],
-            [2, "Tag only", "border-line-2 bg-bg-2 text-text"],
-          ] as const).map(([v, label, activeClass]) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setVisibility(v)}
-              className={`px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors border-r last:border-r-0 border-line ${visibility === v ? activeClass : "text-muted hover:text-text"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <button onClick={remove} disabled={busy} className="ml-auto rounded border border-danger/40 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
+        <button onClick={save} disabled={busy} className="rounded border border-cyan/40 bg-cyan/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-cyan disabled:opacity-50">Save</button>
+        <button onClick={remove} disabled={busy} className="ml-auto rounded border border-danger/40 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-amber hover:bg-amber/10">Delete</button>
       </div>
       {comments.length > 0 && (
         <div className="space-y-1 border-t border-line pt-2">
