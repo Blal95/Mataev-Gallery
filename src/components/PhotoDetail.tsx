@@ -7,6 +7,7 @@ import dynamic from "next/dynamic"
 const LocationMap = dynamic(() => import("./LocationMap").then(m => ({ default: m.LocationMap })), { ssr: false })
 import { PhotoComments } from "./PhotoComments"
 import { ShortcutsOverlay } from "./ShortcutsOverlay"
+import { EditForm } from "./admin/EditForm"
 import { flagEmoji, flagUrl, displayCountry, isInChechnya, formatDuration, formatBytes, formatExposure, formatAperture, formatFocal } from "@/lib/format"
 import { thumbhashToUrl } from "@/lib/thumbhash"
 import type { PhotoDTO } from "@/types/photo"
@@ -70,6 +71,18 @@ export function PhotoDetail({
   const [isPlaying, setIsPlaying] = useState(false)
   const [videoTime, setVideoTime] = useState(0)
   const [videoDuration, setVideoDuration] = useState(photo.duration ?? 0)
+
+  const [authed, setAuthed] = useState(false)
+  const [editing, setEditing] = useState(false)
+  useEffect(() => {
+    fetch("/api/admin/status")
+      .then((r) => r.json())
+      .then((d) => setAuthed((d as { authed: boolean }).authed))
+      .catch(() => {})
+  }, [])
+  if (editing && seenId !== photo.id) setEditing(false)
+  function handleSaved() { router.refresh(); setEditing(false) }
+  function handleDeleted() { router.push("/") }
 
   const [showComments, setShowComments] = useState(false)
   const [contentVisible, setContentVisible] = useState(true)
@@ -644,12 +657,27 @@ export function PhotoDetail({
       <aside className="relative z-30 hidden w-[200px] shrink-0 flex-col border-r border-line bg-bg-2/50 landscape:flex lg:w-[340px] lg:flex h-full overflow-x-hidden">
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3 pt-2.5 lg:px-6 lg:pb-8 lg:pt-6">
           {/* Frame counter */}
-          <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:mb-6 lg:text-[10px] lg:tracking-[0.28em]">
-            Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
-            <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
-            {photo.views > 0 && <span className="text-muted"> · {photo.views.toLocaleString()} views</span>}
-          </p>
+          <div className="mb-3 flex items-center justify-between gap-2 lg:mb-6">
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-amber lg:text-[10px] lg:tracking-[0.28em]">
+              Frame <span className="text-text">{String(index + 1).padStart(3, "0")}</span>
+              <span className="text-muted"> / {String(total).padStart(3, "0")}</span>
+              {photo.views > 0 && <span className="text-muted"> · {photo.views.toLocaleString()} views</span>}
+            </p>
+            {authed && (
+              <button
+                onClick={() => setEditing((v) => !v)}
+                aria-label={editing ? "Cancel edit" : "Edit photo"}
+                className="shrink-0 text-muted transition-colors hover:text-amber"
+              >
+                <Icon d={editing ? "M6 18L18 6M6 6l12 12" : "M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"} className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
 
+          {editing ? (
+            <EditForm photo={photo} onSaved={handleSaved} onDeleted={handleDeleted} />
+          ) : (
+          <>
           {/* Metadata — fades when navigating between photos */}
           <div style={{ opacity: contentVisible ? 1 : 0, transition: "opacity 0.25s ease" }}>
 
@@ -758,6 +786,8 @@ export function PhotoDetail({
           )}
 
           </div>{/* /fade wrapper */}
+          </>
+          )}
         </div>
       </aside>
 
@@ -953,8 +983,17 @@ export function PhotoDetail({
         style={{ transform: "translateY(100%)" }}
       >
         {/* Drag handle — touch listeners live here, not on the panel, so scrollable content stays native */}
-        <div ref={dragHandleRef} className="flex justify-center rounded-t-2xl border-t border-line-2 bg-bg-2 pb-1 pt-3 touch-none">
+        <div ref={dragHandleRef} className="relative flex justify-center rounded-t-2xl border-t border-line-2 bg-bg-2 pb-1 pt-3 touch-none">
           <div className="h-1 w-10 rounded-full bg-line-2" />
+          {authed && (
+            <button
+              onClick={() => setEditing((v) => !v)}
+              aria-label={editing ? "Cancel edit" : "Edit photo"}
+              className="absolute right-4 top-2 text-muted transition-colors hover:text-amber"
+            >
+              <Icon d={editing ? "M6 18L18 6M6 6l12 12" : "M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"} className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="bg-bg-2 pb-[env(safe-area-inset-bottom)]">
@@ -963,6 +1002,10 @@ export function PhotoDetail({
             className="mx-auto max-w-[900px] overflow-y-auto overscroll-contain px-4 pb-5 pt-2 sm:px-6"
             style={{ maxHeight: "min(55vh, 400px)" }}
           >
+          {editing ? (
+            <EditForm photo={photo} onSaved={handleSaved} onDeleted={handleDeleted} />
+          ) : (
+          <>
           <div style={{ opacity: contentVisible ? 1 : 0, transition: "opacity 0.25s ease" }}>
               {/* Caption + location + date — repeated here so it never hides under the sheet */}
               {photo.caption && (
@@ -1052,6 +1095,8 @@ export function PhotoDetail({
                 </button>
               </div>
           </div>{/* /fade wrapper */}
+          </>
+          )}
             </div>
 
             {/* Comments */}
