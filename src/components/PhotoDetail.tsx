@@ -80,13 +80,13 @@ export function PhotoDetail({
       .then((d) => setAuthed((d as { authed: boolean }).authed))
       .catch(() => {})
   }, [])
-  if (editing && seenId !== photo.id) setEditing(false)
   function handleSaved() { router.refresh(); setEditing(false) }
   function handleDeleted() { router.push("/") }
 
   const [showComments, setShowComments] = useState(false)
   const [contentVisible, setContentVisible] = useState(true)
   const [seenId, setSeenId] = useState(photo.id)
+  if (editing && seenId !== photo.id) setEditing(false)
   const [zoom, setZoom] = useState(1)
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
