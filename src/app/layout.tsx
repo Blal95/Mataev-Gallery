@@ -34,11 +34,13 @@ export const metadata: Metadata = {
     type: "website",
     title: "MATAEV — Photography",
     description: "Photographs by Bilal R. Mataev.",
+    images: ["/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
     title: "MATAEV — Photography",
     description: "Photographs by Bilal R. Mataev.",
+    images: ["/og-image.png"],
   },
 }
 
