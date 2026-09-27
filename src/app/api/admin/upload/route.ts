@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     focal_length: meta.focal ?? null, f_number: meta.fNumber ?? null, exposure_time: meta.exposure ?? null, iso: meta.iso ?? null,
     gps_lat: meta.lat ?? null, gps_lon: meta.lon ?? null, gps_alt: meta.alt ?? null,
     place, country, country_code: countryCode, thumbhash: meta.thumbhash ?? null,
-    r2_original: keys.original, r2_large: keys.large, r2_thumb: keys.thumb, published: 1, sort_index: null,
+    r2_original: keys.original, r2_large: keys.large, r2_thumb: keys.thumb, r2_video: null, published: 1, sort_index: null,
     media_type: meta.mediaType === "video" ? "video" : "photo",
     duration: meta.duration ?? null,
     views: 0,

@@ -10,7 +10,7 @@ const row: PhotoRow = {
   lens_model: "FE 24-70 GM", focal_length: 35, f_number: 2.8, exposure_time: 0.004, iso: 100,
   gps_lat: 68.21, gps_lon: 13.62, gps_alt: 12, place: "Lofoten", country: "Norway", country_code: "NO",
   thumbhash: "abc", r2_original: "photos/01J/original.jpg",
-  r2_large: "photos/01J/large.webp", r2_thumb: "photos/01J/thumb.webp",
+  r2_large: "photos/01J/large.webp", r2_thumb: "photos/01J/thumb.webp", r2_video: null,
   published: 1, sort_index: null,
   media_type: "photo", duration: null, views: 0,
 }

@@ -850,7 +850,7 @@ export function PhotoDetail({
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <video
             ref={videoRef}
-            src={photo.url.original}
+            src={photo.url.video ?? photo.url.original}
             poster={photo.url.large}
             preload="auto"
             loop

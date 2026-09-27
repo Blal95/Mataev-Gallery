@@ -7,6 +7,7 @@ import { deriveImages } from "@/lib/client/derive"
 import { computeThumbhash } from "@/lib/client/thumbhash"
 import { extractPoster } from "@/lib/client/poster"
 import { readVideoMeta } from "@/lib/client/videoGps"
+import { transcodeWebVideo } from "@/lib/client/webVideo"
 import { LocationSearchInput, type PickedLocation } from "./LocationSearchInput"
 
 interface Pending {
@@ -272,6 +273,15 @@ export function Uploader({ onUploaded }: { onUploaded: () => void }) {
         if (!putRes.ok) {
           const body = await putRes.text().catch(() => "")
           throw new Error(`PUT ${putRes.status}: ${body.slice(0, 120)}`)
+        }
+      }
+      // Best-effort 1080p playback copy; the original still plays if this fails.
+      if (it.mediaType === "video") {
+        try {
+          const web = await transcodeWebVideo(it.file)
+          await fetch(`/api/admin/upload/${id}/video`, { method: "PUT", headers: { "Content-Type": "video/mp4" }, body: web })
+        } catch (err) {
+          console.warn("1080p transcode skipped", err)
         }
       }
       patch(i, { status: "done", errorMsg: null }); onUploaded()

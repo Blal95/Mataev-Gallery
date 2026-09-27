@@ -7,7 +7,7 @@ const COLS =
   "id,slug,caption,taken_at,created_at,width,height,aspect,bytes,format,color_space," +
   "camera_make,camera_model,lens_model,focal_length,f_number,exposure_time,iso," +
   "gps_lat,gps_lon,gps_alt,place,country,country_code,thumbhash," +
-  "r2_original,r2_large,r2_thumb,published,sort_index,media_type,duration,views"
+  "r2_original,r2_large,r2_thumb,r2_video,published,sort_index,media_type,duration,views"
 
 // D1 caps bound parameters at 100 per statement, so the IN-list is chunked.
 const BIND_CHUNK = 90
@@ -42,7 +42,7 @@ export async function insertPhoto(db: SqlDb, row: PhotoRow, tags: string[]): Pro
       row.id, row.slug, row.caption, row.taken_at, row.created_at, row.width, row.height, row.aspect,
       row.bytes, row.format, row.color_space, row.camera_make, row.camera_model, row.lens_model,
       row.focal_length, row.f_number, row.exposure_time, row.iso, row.gps_lat, row.gps_lon, row.gps_alt,
-      row.place, row.country, row.country_code, row.thumbhash, row.r2_original, row.r2_large, row.r2_thumb,
+      row.place, row.country, row.country_code, row.thumbhash, row.r2_original, row.r2_large, row.r2_thumb, row.r2_video,
       row.published, row.sort_index, row.media_type, row.duration, row.views,
     )
     .run()
@@ -160,12 +160,12 @@ export async function listAllTags(db: SqlDb): Promise<{ name: string; count: num
 }
 
 export async function deletePhoto(db: SqlDb, id: string): Promise<string[]> {
-  const row = await db.prepare("SELECT r2_original, r2_large, r2_thumb FROM photos WHERE id = ?").bind(id).first<{
-    r2_original: string; r2_large: string; r2_thumb: string
+  const row = await db.prepare("SELECT r2_original, r2_large, r2_thumb, r2_video FROM photos WHERE id = ?").bind(id).first<{
+    r2_original: string; r2_large: string; r2_thumb: string; r2_video: string | null
   }>()
   if (!row) return []
   await db.prepare("DELETE FROM photos WHERE id = ?").bind(id).run()
-  return [row.r2_original, row.r2_large, row.r2_thumb]
+  return [row.r2_original, row.r2_large, row.r2_thumb, ...(row.r2_video ? [row.r2_video] : [])]
 }
 
 export async function updatePhoto(
@@ -182,6 +182,10 @@ export async function updatePhoto(
     const set = fields.map((f) => `${f} = ?`).join(", ")
     await db.prepare(`UPDATE photos SET ${set} WHERE id = ?`).bind(...fields.map((f) => (patch as Record<string, unknown>)[f]), id).run()
   }
+}
+
+export async function setVideoKey(db: SqlDb, id: string, key: string): Promise<void> {
+  await db.prepare("UPDATE photos SET r2_video = ? WHERE id = ?").bind(key, id).run()
 }
 
 export async function setTags(db: SqlDb, id: string, tags: string[]): Promise<void> {

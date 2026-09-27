@@ -5,6 +5,7 @@ export function photoKeys(id: string, ext: string) {
     original: `photos/${id}/original.${ext}`,
     large: `photos/${id}/large.webp`,
     thumb: `photos/${id}/thumb.webp`,
+    video: `photos/${id}/video.mp4`,
   }
 }
 

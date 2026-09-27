@@ -9,6 +9,7 @@ export interface PhotoRow {
   place: string | null; country: string | null; country_code: string | null
   thumbhash: string | null
   r2_original: string; r2_large: string; r2_thumb: string
+  r2_video: string | null   // 1080p MP4 for playback; null for photos / not yet transcoded
   published: number; sort_index: number | null
   media_type: string        // 'photo' | 'video'
   duration: number | null   // seconds; null for photos
@@ -17,7 +18,7 @@ export interface PhotoRow {
 
 export interface PhotoDTO {
   id: string; slug: string
-  url: { thumb: string; large: string; original: string }
+  url: { thumb: string; large: string; original: string; video: string | null }
   width: number; height: number; aspect: number
   thumbhash: string | null
   caption: string | null; takenAt: number | null

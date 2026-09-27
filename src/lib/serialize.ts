@@ -9,6 +9,7 @@ export function rowToDTO(row: PhotoRow, tags: string[], cdnBase: string, comment
       thumb: `${cdnBase}/${row.r2_thumb}`,
       large: `${cdnBase}/${row.r2_large}`,
       original: `${cdnBase}/${row.r2_original}`,
+      video: row.r2_video ? `${cdnBase}/${row.r2_video}` : null,
     },
     width: row.width, height: row.height, aspect: row.aspect,
     thumbhash: row.thumbhash,
