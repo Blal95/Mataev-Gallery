@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import "leaflet/dist/leaflet.css"
+import { MAP_TILE_URL } from "@/config/site"
 
 /**
  * A compact interactive locator map. Replaces the old MapTiler static image
@@ -52,7 +53,7 @@ export function LocationMap({
       })
 
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        MAP_TILE_URL,
         {
           subdomains: "abcd",
           maxZoom: 19,

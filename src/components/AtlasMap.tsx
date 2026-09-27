@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import "leaflet/dist/leaflet.css"
+import { MAP_TILE_URL } from "@/config/site"
 import "leaflet.markercluster/dist/MarkerCluster.css"
 
 export interface AtlasPin {
@@ -73,8 +74,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         inertiaMaxSpeed: 2500,
       })
 
-      const TILE_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-
+      
       // Backdrop layer — a coarse, always-present base pinned to a low native
       // zoom (z6). Because its tile zoom is capped, it does NOT re-fetch or get
       // pruned when the detail zoom changes; Leaflet just transform-scales its
@@ -83,7 +83,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
       // there while the crisp detail tiles stream in on top. zIndex keeps it
       // under the detail layer. It lives in the same .leaflet-tile-pane, so the
       // colour-grade filter applies to both layers identically (no two-tone).
-      L.tileLayer(TILE_URL, {
+      L.tileLayer(MAP_TILE_URL, {
         subdomains: "abcd",
         minZoom: 2,
         maxZoom: 19,
@@ -93,7 +93,7 @@ export function AtlasMap({ pins, className, initialCenter, initialZoom, selected
         zIndex: 1,
       }).addTo(map)
 
-      const tiles = L.tileLayer(TILE_URL, {
+      const tiles = L.tileLayer(MAP_TILE_URL, {
         subdomains: "abcd",
         maxZoom: 19,
         minZoom: 2,

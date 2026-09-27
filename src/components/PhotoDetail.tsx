@@ -129,7 +129,6 @@ export function PhotoDetail({
     applyZoom(z1, px, py, smooth)
   }
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [canPlay, setCanPlay] = useState(false)
   const [largeLoaded, setLargeLoaded] = useState(false)
   const isVideo = photo.mediaType === "video"
 
@@ -142,7 +141,7 @@ export function PhotoDetail({
     // eslint-disable-next-line react-hooks/refs
     zoomRef.current = 1; panRef.current = { x: 0, y: 0 }
     setZoom(1); setPanX(0); setPanY(0)
-    setCanPlay(false); setVideoTime(0); setIsPlaying(false)
+    setVideoTime(0); setIsPlaying(false)
     setLargeLoaded(false); setContentVisible(false)
   }
   const touchStartX = useRef<number | null>(null)
@@ -506,11 +505,13 @@ export function PhotoDetail({
     fetch(`/api/photos/${photo.id}/view`, { method: "POST" }).catch(() => {})
   }, [photo.id])
 
-  // Autoplay shortly after the video is ready. Try with sound first (opening the
-  // photo is a user gesture, so this is usually allowed); fall back to muted
-  // autoplay if the browser blocks audible playback.
+  // Autoplay shortly after mount. Try with sound first (opening the photo is a
+  // user gesture, so this is usually allowed); fall back to muted autoplay if
+  // the browser blocks audible playback. Not gated on canplay: iOS Safari
+  // doesn't buffer video data until play() is called, so canplay/loadeddata
+  // would never fire and the video would stay blank.
   useEffect(() => {
-    if (!isVideo || !canPlay) return
+    if (!isVideo) return
     const t = setTimeout(() => {
       const v = videoRef.current
       if (!v) return
@@ -521,7 +522,7 @@ export function PhotoDetail({
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [isVideo, canPlay])
+  }, [isVideo, photo.id])
 
   // Safety timeout so blur removes even if onLoad never fires (e.g. cached
   // image). The reset itself happens in the render-time seenId block above.
@@ -850,10 +851,11 @@ export function PhotoDetail({
           <video
             ref={videoRef}
             src={photo.url.original}
+            poster={photo.url.large}
+            preload="auto"
             loop
             muted={isMuted}
             playsInline
-            onCanPlay={() => setCanPlay(true)}
             onLoadedMetadata={() => setVideoDuration(videoRef.current?.duration ?? photo.duration ?? 0)}
             onLoadedData={() => { setTransitioning(false); setContentVisible(true) }}
             onTimeUpdate={() => { setVideoTime(videoRef.current?.currentTime ?? 0) }}

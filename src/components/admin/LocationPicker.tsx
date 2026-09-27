@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import "leaflet/dist/leaflet.css"
+import { MAP_TILE_URL } from "@/config/site"
 
 export interface LocationValue {
   lat: number | null
@@ -86,7 +87,7 @@ export function LocationPicker({
       })
       map.setView(center, value.lat != null ? 8 : 3)
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      L.tileLayer(MAP_TILE_URL, {
         subdomains: "abcd",
         maxZoom: 19,
       }).addTo(map)
